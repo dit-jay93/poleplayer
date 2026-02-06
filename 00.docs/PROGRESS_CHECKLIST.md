@@ -1,22 +1,22 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 01:51 KST
+Last updated: 2026-02-07 02:14 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
 ## 00 — Project Setup & CI
-- [ ] Create Xcode workspace with modular targets: PlayerCore, RenderCore, DecodeKit, Review, Library, Export
+- [x] Create Xcode workspace with modular targets: PlayerCore, RenderCore, DecodeKit, Review, Library, Export (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: `swift build` + `swift test` ok; open `Package.swift` in Xcode)
 - [ ] Set up SwiftLint/formatting (optional) and basic coding conventions
-- [ ] Add CI pipeline: build Debug/Release, run unit tests
-- [ ] Add minimal crash logging hook (can be stub for MVP)
-- [ ] Add feature flags system (simple)
+- [x] Add CI pipeline: build Debug/Release, run unit tests (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: workflow file added)
+- [x] Add minimal crash logging hook (can be stub for MVP) (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
+- [x] Add feature flags system (simple) (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
 
 ## 10 — PlayerCore (Timeline, Modes, Controls)
 - [ ] Implement timeline state machine: play/pause/stop/loop/in-out
-- [ ] Implement keyboard controls: JKL, frame step, seek-to-frame
+- [x] Implement keyboard controls: JKL, frame step, seek-to-frame (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok; manual playback pending)
 - [ ] Implement hybrid mode switching rules (auto precision triggers)
-- [ ] Expose playback observables for UI (timecode/frame index)
-- [ ] Integrate basic overlay data: fps, resolution, frame index
+- [x] Expose playback observables for UI (timecode/frame index) (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
+- [x] Integrate basic overlay data: fps, resolution, frame index (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
 
 ## 20 — DecodeKit (AVFoundation Decoders for MOV/MP4)
 - [ ] Implement DecoderPlugin for MOV/MP4 using AVFoundation
