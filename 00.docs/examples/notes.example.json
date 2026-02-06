@@ -1,0 +1,33 @@
+{
+  "schema": {
+    "name": "com.poledit.review-notes",
+    "version": "1.0.0"
+  },
+  "export": {
+    "export_id": "UUID",
+    "exported_at": "2026-02-07T00:00:00+09:00",
+    "app": {
+      "name": "YourPlayer",
+      "version": "0.1.0",
+      "build": "100"
+    }
+  },
+  "author": {
+    "display_name": "Jay",
+    "role": "DIT"
+  },
+  "asset": {
+    "uri": "file:///path/to/clip.mov",
+    "file_name": "clip.mov",
+    "file_hash_sha256": "<HEX>",
+    "file_size_bytes": 0,
+    "modified_at": "2026-02-07T00:00:00+09:00"
+  },
+  "timeline": {
+    "container_fps": 23.976,
+    "timebase": "23.976",
+    "start_timecode": "01:00:00:00",
+    "duration_frames": 1000
+  },
+  "review_items": []
+}
