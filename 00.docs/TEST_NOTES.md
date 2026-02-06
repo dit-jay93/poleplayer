@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 02:14 KST
+Updated: 2026-02-07 02:32 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -25,6 +25,15 @@ Updated: 2026-02-07 02:14 KST
 7. Verify mode pill switches to PRECISION on frame-step.
 8. Repeat for H.264, H.265, and still images.
 
+## Automated smoke (headless decode)
+Ran AVFoundation probe via a Swift script to validate load + frame extract on current `TestClips`:
+- `IMG_6761.MOV`: playable, fps ~23.999, 2160x3840, duration ~214s, frame0 ok, frame1 ok
+- `SPNprv.mov`: playable, fps 24.000, 1920x1080, duration ~290s, frame0 ok, frame1 ok
+- `🍒사쿠란보!_dl.mp4`: playable, fps 60.000, 1080x1920, duration ~27s, frame0 ok, frame1 ok
+- `KakaoTalk_20260206_172632119_01.png`: loaded, 653x8192
+- `background.tiff`: loaded, 540x380
+- `images.jpeg`: loaded, 284x177
+
 ## Expected results
 - Video plays smoothly for ProRes/H.264/H.265.
 - Frame step advances/rewinds by one frame.
@@ -34,3 +43,4 @@ Updated: 2026-02-07 02:14 KST
 ## Known issues / limitations
 - Precision path is AVPlayer seek with zero tolerance (DecodeKit precision path not wired yet).
 - Reverse playback uses manual frame stepping (may feel slower on long-GOP clips).
+- Manual GUI playback verification still needed on these clips.

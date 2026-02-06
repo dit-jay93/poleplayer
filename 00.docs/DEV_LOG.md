@@ -9,3 +9,11 @@
 - Decision: M0 playback uses AVPlayer for real-time and precision (seek with zero tolerance); DecodeKit precision path is a follow-up. Rationale: deliver earliest testable playback.
 - Note: Reverse playback via manual frame-step timer when J is pressed (fallback for negative rate support).
 - Verification: `swift build` and `swift test` passed locally.
+
+## 2026-02-07 02:32 KST
+- Ran headless AVFoundation smoke probe on `TestClips`:
+  - `IMG_6761.MOV` (fps ~23.999, 2160x3840) frame0/frame1 OK
+  - `SPNprv.mov` (fps 24.000, 1920x1080) frame0/frame1 OK
+  - `🍒사쿠란보!_dl.mp4` (fps 60.000, 1080x1920) frame0/frame1 OK
+  - PNG/TIFF/JPEG stills loaded successfully
+- Note: Manual GUI playback verification is still pending.
