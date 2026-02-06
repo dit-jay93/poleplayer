@@ -56,12 +56,12 @@ public protocol DecoderPlugin {
     func close()
 }
 
-public final class AVFoundationDecoder: DecoderPlugin {
+public final class AVFoundationDecoder: DecoderPlugin, @unchecked Sendable {
     public static let pluginID = "decode.avfoundation"
     public static let displayName = "AVFoundation"
     public static let supportedExtensions = ["mov", "mp4", "m4v"]
 
-    private let asset: AVAsset
+    private let asset: AVURLAsset
     private let imageGenerator: AVAssetImageGenerator
     private var fps: Double = 30.0
 
@@ -74,15 +74,23 @@ public final class AVFoundationDecoder: DecoderPlugin {
         guard Self.canOpen(asset) else {
             throw NSError(domain: "DecodeKit", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unsupported asset"]) 
         }
-        self.asset = AVAsset(url: asset.url)
+        self.asset = AVURLAsset(url: asset.url)
         self.imageGenerator = AVAssetImageGenerator(asset: self.asset)
         self.imageGenerator.appliesPreferredTrackTransform = true
         self.imageGenerator.requestedTimeToleranceBefore = .zero
         self.imageGenerator.requestedTimeToleranceAfter = .zero
-
-        if let track = self.asset.tracks(withMediaType: .video).first {
-            let nominal = Double(track.nominalFrameRate)
-            self.fps = nominal > 0 ? nominal : 30.0
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let tracks = try await self.asset.loadTracks(withMediaType: .video)
+                if let track = tracks.first {
+                    let nominal = try await track.load(.nominalFrameRate)
+                    let value = Double(nominal)
+                    self.fps = value > 0 ? value : 30.0
+                }
+            } catch {
+                // Keep default fps when loading fails.
+            }
         }
     }
 

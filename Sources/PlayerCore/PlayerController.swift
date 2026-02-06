@@ -93,55 +93,50 @@ public final class PlayerController: ObservableObject {
     public func openVideo(url: URL) {
         clear()
         log.info("Opening video: \(url.path, privacy: .public)")
-        let asset = AVAsset(url: url)
+        let asset = AVURLAsset(url: url)
         self.asset = asset
-
-        let keys = ["tracks", "duration", "playable"]
-        asset.loadValuesAsynchronously(forKeys: keys) { [weak self] in
-            Task { @MainActor in
-                self?.finishLoading(keys: keys)
-            }
+        Task { [weak self] in
+            await self?.finishLoading(asset: asset)
         }
     }
 
-    private func finishLoading(keys: [String]) {
-        guard let asset else { return }
-        for key in keys {
-            var error: NSError?
-            if asset.statusOfValue(forKey: key, error: &error) != .loaded {
-                let reason = error?.localizedDescription ?? "Unknown error"
-                handleError(PlayerCoreError.failedToLoad(reason))
+    private func finishLoading(asset: AVAsset) async {
+        do {
+            let playable = try await asset.load(.isPlayable)
+            guard playable else {
+                handleError(PlayerCoreError.assetNotPlayable)
                 return
             }
+
+            let tracks = try await asset.loadTracks(withMediaType: .video)
+            guard let track = tracks.first else {
+                handleError(PlayerCoreError.noVideoTrack)
+                return
+            }
+
+            let nominalFPS = try await track.load(.nominalFrameRate)
+            fps = nominalFPS > 0 ? Double(nominalFPS) : 30.0
+
+            let naturalSize = try await track.load(.naturalSize)
+            let preferredTransform = try await track.load(.preferredTransform)
+            let transformed = naturalSize.applying(preferredTransform)
+            resolution = CGSize(width: abs(transformed.width), height: abs(transformed.height))
+
+            let duration = try await asset.load(.duration)
+            let durationSeconds = duration.seconds
+            durationFrames = durationSeconds.isFinite ? Int(round(durationSeconds * fps)) : 0
+
+            let item = AVPlayerItem(asset: asset)
+            player.replaceCurrentItem(with: item)
+            hasVideo = true
+
+            attachTimeObserver()
+            attachEndObserver(item: item)
+
+            updateDerivedState(for: player.currentTime())
+        } catch {
+            handleError(error)
         }
-
-        guard asset.isPlayable else {
-            handleError(PlayerCoreError.assetNotPlayable)
-            return
-        }
-
-        guard let track = asset.tracks(withMediaType: .video).first else {
-            handleError(PlayerCoreError.noVideoTrack)
-            return
-        }
-
-        let nominalFPS = Double(track.nominalFrameRate)
-        fps = nominalFPS > 0 ? nominalFPS : 30.0
-
-        let naturalSize = track.naturalSize.applying(track.preferredTransform)
-        resolution = CGSize(width: abs(naturalSize.width), height: abs(naturalSize.height))
-
-        let durationSeconds = asset.duration.seconds
-        durationFrames = durationSeconds.isFinite ? Int(round(durationSeconds * fps)) : 0
-
-        let item = AVPlayerItem(asset: asset)
-        player.replaceCurrentItem(with: item)
-        hasVideo = true
-
-        attachTimeObserver()
-        attachEndObserver(item: item)
-
-        updateDerivedState(for: player.currentTime())
     }
 
     private func attachTimeObserver() {

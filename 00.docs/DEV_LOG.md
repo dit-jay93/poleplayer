@@ -17,3 +17,7 @@
   - `🍒사쿠란보!_dl.mp4` (fps 60.000, 1080x1920) frame0/frame1 OK
   - PNG/TIFF/JPEG stills loaded successfully
 - Note: Manual GUI playback verification is still pending.
+
+## 2026-02-07 02:48 KST
+- Refactor: PlayerCore and DecodeKit migrated to async AVFoundation `load(...)` APIs to remove deprecated calls and avoid build warnings.
+- Note: DecodeKit AVFoundation decoder uses `@unchecked Sendable` to allow background async track loading for fps initialization.
