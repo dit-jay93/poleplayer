@@ -87,3 +87,9 @@
 ## 2026-02-07 20:53 KST
 - Review: Added SQLite-backed ReviewStore with assets/review_items/annotations tables.
 - Review: Added normalized geometry models + round-trip tests for ReviewStore.
+
+## 2026-02-07 21:02 KST
+- Review/UI: Added annotation toolset (pen/rect/circle/arrow/text) with normalized geometry capture.
+- RenderCore: Added overlay composer for HUD + annotations; annotations render in Metal overlay.
+- Review: Added ReviewSession (load/create, draft, persist) and asset hashing for DB restore.
+- Tests: Added normalized geometry clamp tests; `swift test` passes.

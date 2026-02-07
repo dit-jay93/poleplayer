@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 17:03 KST
+Updated: 2026-02-07 21:02 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -35,6 +35,12 @@ Updated: 2026-02-07 17:03 KST
 10. Repeat for H.264, H.265, and still images.
 11. HUD overlay (RenderCore):
    - Confirm a minimal HUD (TC/Frame/FPS/Res) appears near the lower-left of the video image.
+12. Annotations:
+   - Toggle Annotate on.
+   - Pick a tool (Pen/Rect/Circle/Arrow/Text).
+   - Drag to draw; Text places a “Note” at click point.
+   - Use I/O to set a range and draw an annotation; it should persist across frames in that range.
+   - Quit and relaunch, reopen the same clip, and confirm annotations restore.
 
 ## Debug visibility checks (NEW)
 - If video frames are not visible, a **checkerboard debug pattern** should still appear.

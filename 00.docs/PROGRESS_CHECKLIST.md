@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 20:53 KST
+Last updated: 2026-02-07 21:02 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -33,11 +33,11 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [x] Implement burn-in renderer for export path (commit: bbaaee6, time: 2026-02-07 17:03 KST, verify: `swift build` + `swift test` ok)
 
 ## 40 — Review System (Annotations + Persistence)
-- [ ] Implement annotation toolset: pen/rect/circle/arrow/text
-- [ ] Store geometry in normalized 0..1 coordinates with top-left origin
-- [ ] Bind annotations to single frame or frame range
+- [x] Implement annotation toolset: pen/rect/circle/arrow/text (commit: 70858dd, time: 2026-02-07 21:02 KST, verify: `swift build` + `swift test` ok)
+- [x] Store geometry in normalized 0..1 coordinates with top-left origin (commit: 70858dd, time: 2026-02-07 21:02 KST, verify: `swift test` ok; clamp tests added)
+- [x] Bind annotations to single frame or frame range (commit: 70858dd, time: 2026-02-07 21:02 KST, verify: `swift test` ok)
 - [x] Implement DB persistence for review items + annotations (commit: 354b7bf, time: 2026-02-07 20:53 KST, verify: `swift test` ok)
-- [ ] On relaunch, restore review state and render overlays on correct frames
+- [x] On relaunch, restore review state and render overlays on correct frames (commit: 70858dd, time: 2026-02-07 21:02 KST, verify: `swift build` + `swift test` ok; manual restore pending)
 
 ## 50 — Export Package (Still + notes.json)
 - [ ] Implement still capture from current frame (PNG)

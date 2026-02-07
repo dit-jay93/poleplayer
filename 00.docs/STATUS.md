@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 20:53 KST
+Updated: 2026-02-07 21:02 KST
 
 Current phase: 40 — Review System (Annotations + Persistence)
 
@@ -28,14 +28,16 @@ What’s done
 - RenderCore burn-in renderer helper added for export path
 - ReviewStore (SQLite) added with assets/review_items/annotations tables
 - Review models include normalized geometry types; ReviewStore round-trip tests pass
+- Annotation toolset UI added (pen/rect/circle/arrow/text)
+- ReviewSession wired to asset hashing; review state loads on open and overlays render in Metal
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Precision frame accuracy spot-check on ProRes (random frames)
 - Add import drag & drop and basic recent items
 - Wire burn-in renderer into Export flow (future)
-- Implement annotation toolset UI + overlay rendering
-- Wire ReviewStore into app and restore on relaunch
+- Annotation editing (select/move/delete) + text editing
+- Confirm relaunch restore flow with a reference clip
 
 Blockers / Risks
 - Audio/video sync may drift (AssetReader frames are timer-driven)
