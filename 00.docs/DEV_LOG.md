@@ -53,3 +53,6 @@
 
 ## 2026-02-07 13:18 KST
 - Fix: SwiftUI subviews now observe PlayerController directly (@ObservedObject) so video state changes (hasVideo/mode/debug counters) render immediately. This should unblock Metal viewer display + debug HUD updates.
+
+## 2026-02-07 13:32 KST
+- Fix: FontRegistrar now searches both Bundle.module and Bundle.main for Pretendard fonts; logs bundle resource paths to diagnose missing font resources.
