@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 11:41 KST
+Updated: 2026-02-07 11:49 KST
 
 Current phase: 10 — PlayerCore (M0 playback shell in progress)
 
@@ -11,14 +11,16 @@ What’s done
 - Pretendard fonts bundled + registered on launch
 - CI workflow added (build + test)
 - Headless AVFoundation smoke decode on TestClips (load + frame extract OK)
-- Fix: Video view now expands to avoid zero-size AVPlayerView (blank video issue)
+- Fix attempt: viewer now uses GeometryReader to ensure AVPlayerView gets height
 
 What’s next
+- Re-test GUI video playback after latest layout fix
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Tighten hybrid mode switching rules + frame-accurate step/seek validation
 - Add import drag & drop and basic recent items
 
 Blockers / Risks
+- Audio-only playback still reported (needs re-test after latest layout fix)
 - Precision path still uses AVPlayer seek with zero tolerance (placeholder until DecodeKit precision path)
 - VFR support policy not locked yet
 
