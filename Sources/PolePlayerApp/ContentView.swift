@@ -13,9 +13,11 @@ struct ContentView: View {
                 title: appState.currentURL?.lastPathComponent ?? "No Media Loaded",
                 onOpen: appState.openPanel,
                 onOpenLUT: appState.openLUTPanel,
+                onExport: appState.exportPanel,
                 lutName: appState.lutName,
                 lutEnabled: $appState.lutEnabled,
                 lutIntensity: $appState.lutIntensity,
+                burnInEnabled: $appState.exportBurnInEnabled,
                 isAnnotating: $appState.isAnnotating,
                 activeTool: Binding(
                     get: { appState.reviewSession?.activeTool ?? .rect },
@@ -72,9 +74,11 @@ private struct TopBar: View {
     let title: String
     let onOpen: () -> Void
     let onOpenLUT: () -> Void
+    let onExport: () -> Void
     let lutName: String?
     @Binding var lutEnabled: Bool
     @Binding var lutIntensity: Double
+    @Binding var burnInEnabled: Bool
     @Binding var isAnnotating: Bool
     @Binding var activeTool: AnnotationType
     let reviewAvailable: Bool
@@ -101,6 +105,9 @@ private struct TopBar: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
+            Toggle("Burn-in", isOn: $burnInEnabled)
+                .toggleStyle(.switch)
+                .font(AppFont.caption)
             if reviewAvailable {
                 Toggle("Annotate", isOn: $isAnnotating)
                     .toggleStyle(.switch)
@@ -117,6 +124,9 @@ private struct TopBar: View {
                 .disabled(!isAnnotating)
             }
             Button("LUT…", action: onOpenLUT)
+                .buttonStyle(.bordered)
+                .font(AppFont.body)
+            Button("Export…", action: onExport)
                 .buttonStyle(.bordered)
                 .font(AppFont.body)
             Button("Open…", action: onOpen)

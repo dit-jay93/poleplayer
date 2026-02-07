@@ -6,6 +6,7 @@ import os
 import PlayerCore
 import RenderCore
 import Review
+import Export
 
 @MainActor
 final class AppState: ObservableObject {
@@ -18,6 +19,7 @@ final class AppState: ObservableObject {
     @Published var lutIntensity: Double = 1.0
     @Published var lutName: String? = nil
     @Published var isAnnotating: Bool = false
+    @Published var exportBurnInEnabled: Bool = false
 
     let reviewSession: ReviewSession?
 
@@ -87,6 +89,25 @@ final class AppState: ObservableObject {
             return
         }
         showError("Unsupported file type: .\(ext)")
+    }
+
+    func exportPanel() {
+        guard currentURL != nil else {
+            showError("Load a media file before exporting.")
+            return
+        }
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Export"
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            Task { [weak self] in
+                await self?.exportPackage(to: url)
+            }
+        }
     }
 
     func handleKeyDown(event: NSEvent) {
@@ -177,6 +198,81 @@ final class AppState: ObservableObject {
         isShowingError = true
     }
 
+    private func exportPackage(to destinationURL: URL) async {
+        guard let currentURL else {
+            showError("No media loaded.")
+            return
+        }
+        guard let reviewSession, let asset = reviewSession.asset, let reviewItem = reviewSession.reviewItem else {
+            showError("Review data not available for export.")
+            return
+        }
+        playerController.prepareForExportStill()
+
+        let frameIndex = playerController.frameIndex
+        let baseName = currentURL.deletingPathExtension().lastPathComponent
+        let packageName = ExportNaming.packageName(baseName: baseName, frameIndex: frameIndex, date: Date())
+
+        do {
+            let baseImage = try await captureBaseImage()
+            let hud = exportBurnInEnabled ? HUDOverlayData(
+                timecode: playerController.timecode,
+                frameIndex: frameIndex,
+                fps: playerController.fps,
+                resolution: playerController.resolution
+            ) : nil
+            let overlayImage = ExportOverlayBuilder.overlayImage(
+                size: CGSize(width: baseImage.width, height: baseImage.height),
+                hud: hud,
+                annotations: reviewSession.annotations(forFrame: frameIndex)
+            )
+
+            let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "PolePlayer"
+            let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+            let appBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+
+            let startTimecode = TimecodeFormatter.timecodeString(frameIndex: 0, fps: playerController.fps)
+            let context = ExportContext(
+                destinationURL: destinationURL,
+                packageName: packageName,
+                stillBaseName: baseName,
+                frameIndex: frameIndex,
+                timecode: startTimecode,
+                fps: playerController.fps,
+                durationFrames: max(playerController.durationFrames, 1),
+                baseImage: baseImage,
+                overlayImage: overlayImage,
+                asset: asset,
+                reviewItem: reviewItem,
+                annotations: reviewSession.annotations,
+                lutName: lutName,
+                lutPath: nil,
+                lutHash: nil,
+                lutIntensity: lutIntensity,
+                lutEnabled: lutEnabled,
+                appName: appName,
+                appVersion: appVersion,
+                appBuild: appBuild,
+                authorName: NSUserName()
+            )
+
+            _ = try ExportCoordinator.exportPackage(context: context)
+            log.info("Exported package: \(packageName, privacy: .public)")
+        } catch {
+            showError("Export failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func captureBaseImage() async throws -> CGImage {
+        if let currentImage {
+            guard let cgImage = currentImage.cgImageForExport() else {
+                throw NSError(domain: "PolePlayer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to read still image."]) 
+            }
+            return cgImage
+        }
+        return try await playerController.captureStillImage()
+    }
+
     private func startReview(for url: URL) {
         guard let reviewSession else { return }
         Task { [weak self] in
@@ -203,5 +299,12 @@ final class AppState: ObservableObject {
             Logger(subsystem: "PolePlayer", category: "AppState").error("ReviewStore init failed: \(error.localizedDescription, privacy: .public)")
         }
         return nil
+    }
+}
+
+private extension NSImage {
+    func cgImageForExport() -> CGImage? {
+        var rect = NSRect(origin: .zero, size: size)
+        return cgImage(forProposedRect: &rect, context: nil, hints: nil)
     }
 }

@@ -40,7 +40,10 @@ let package = Package(
         .target(name: "RenderCore"),
         .target(name: "Review"),
         .target(name: "Library"),
-        .target(name: "Export"),
+        .target(
+            name: "Export",
+            dependencies: ["Review"]
+        ),
         .testTarget(
             name: "PlayerCoreTests",
             dependencies: ["PlayerCore"]
@@ -52,6 +55,10 @@ let package = Package(
         .testTarget(
             name: "ReviewTests",
             dependencies: ["Review"]
+        ),
+        .testTarget(
+            name: "ExportTests",
+            dependencies: ["Export"]
         )
     ]
 )

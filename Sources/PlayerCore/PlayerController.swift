@@ -1,6 +1,8 @@
 @preconcurrency import AVFoundation
 import Combine
+import CoreImage
 import CoreMedia
+import CoreVideo
 import Foundation
 import os
 import DecodeKit
@@ -37,6 +39,17 @@ public enum PlayerCoreError: LocalizedError {
             return "No video track found in asset."
         case .failedToLoad(let reason):
             return "Failed to load asset: \(reason)"
+        }
+    }
+}
+
+private enum CaptureError: LocalizedError {
+    case noFrame
+
+    var errorDescription: String? {
+        switch self {
+        case .noFrame:
+            return "Unable to capture frame."
         }
     }
 }
@@ -238,6 +251,18 @@ public final class PlayerController: ObservableObject {
         return nil
     }
 
+    public func captureStillImage() async throws -> CGImage {
+        if let precisionDecoder {
+            let request = FrameRequest(frameIndex: frameIndex, priority: 2, allowApproximate: false)
+            let decoded = try precisionDecoder.decodeFrame(request)
+            return try Self.cgImage(from: decoded)
+        }
+        if let buffer = assetReaderSource?.currentPixelBuffer() {
+            return try Self.cgImage(from: buffer)
+        }
+        throw CaptureError.noFrame
+    }
+
     private func generateFrozenFrame(atFrameIndex frameIndex: Int) {
         guard let precisionDecoder else { return }
         imageGenQueue.async { [weak self] in
@@ -271,6 +296,30 @@ public final class PlayerController: ObservableObject {
                 self.log.error("Precision decode failed: \(error.localizedDescription, privacy: .public)")
             }
         }
+    }
+
+    private static func cgImage(from decoded: DecodedFrame) throws -> CGImage {
+        switch decoded {
+        case .cgImage(let image):
+            return image
+        case .pixelBuffer(let buffer):
+            return try cgImage(from: buffer)
+        }
+    }
+
+    private static func cgImage(from buffer: CVPixelBuffer) throws -> CGImage {
+        let ciImage = CIImage(cvPixelBuffer: buffer)
+        let rect = CGRect(
+            x: 0,
+            y: 0,
+            width: CVPixelBufferGetWidth(buffer),
+            height: CVPixelBufferGetHeight(buffer)
+        )
+        let context = CIContext()
+        guard let image = context.createCGImage(ciImage, from: rect) else {
+            throw CaptureError.noFrame
+        }
+        return image
     }
 
     private func makePixelBuffer(from image: CGImage) -> CVPixelBuffer? {
