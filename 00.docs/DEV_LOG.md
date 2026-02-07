@@ -27,3 +27,6 @@
 
 ## 2026-02-07 11:49 KST
 - Fix attempt: Wrap viewer area in GeometryReader to ensure non-zero height for AVPlayerView; aim to resolve “audio-only, no video frames” symptom.
+
+## 2026-02-07 12:02 KST
+- Fix: CI uses Swift 6.1.x on macos-latest; set Package.swift tools version to 6.1 to avoid build failure.
