@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .executable(name: "PolePlayerApp", targets: ["PolePlayerApp"]),
+        .executable(name: "PolePlayerBench", targets: ["PolePlayerBench"]),
         .library(name: "PlayerCore", targets: ["PlayerCore"]),
         .library(name: "DecodeKit", targets: ["DecodeKit"]),
         .library(name: "RenderCore", targets: ["RenderCore"]),
@@ -30,6 +31,12 @@ let package = Package(
             ],
             resources: [
                 .process("Resources")
+            ]
+        ),
+        .executableTarget(
+            name: "PolePlayerBench",
+            dependencies: [
+                "RenderCore"
             ]
         ),
         .target(

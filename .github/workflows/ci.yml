@@ -16,3 +16,6 @@ jobs:
 
       - name: Test
         run: swift test --configuration debug
+
+      - name: Benchmark (CI)
+        run: swift run PolePlayerBench --ci --output /tmp/poleplayer_bench
