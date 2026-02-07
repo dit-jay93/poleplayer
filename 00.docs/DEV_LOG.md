@@ -21,3 +21,6 @@
 ## 2026-02-07 02:48 KST
 - Refactor: PlayerCore and DecodeKit migrated to async AVFoundation `load(...)` APIs to remove deprecated calls and avoid build warnings.
 - Note: DecodeKit AVFoundation decoder uses `@unchecked Sendable` to allow background async track loading for fps initialization.
+
+## 2026-02-07 11:41 KST
+- Fix: Force video view to expand to available space to avoid zero-size AVPlayerView (videos appeared blank while audio played).

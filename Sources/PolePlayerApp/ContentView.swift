@@ -84,11 +84,13 @@ private struct ViewerSurface: View {
                     .padding(12)
             } else if player.hasVideo {
                 VideoPlayerContainer(player: player.player)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(4)
             } else {
                 PlaceholderView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
