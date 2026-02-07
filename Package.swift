@@ -48,6 +48,10 @@ let package = Package(
         .testTarget(
             name: "RenderCoreTests",
             dependencies: ["RenderCore"]
+        ),
+        .testTarget(
+            name: "ReviewTests",
+            dependencies: ["Review"]
         )
     ]
 )
