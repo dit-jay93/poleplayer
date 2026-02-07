@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 17:03 KST
+Last updated: 2026-02-07 20:53 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -36,7 +36,7 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [ ] Implement annotation toolset: pen/rect/circle/arrow/text
 - [ ] Store geometry in normalized 0..1 coordinates with top-left origin
 - [ ] Bind annotations to single frame or frame range
-- [ ] Implement DB persistence for review items + annotations
+- [x] Implement DB persistence for review items + annotations (commit: 354b7bf, time: 2026-02-07 20:53 KST, verify: `swift test` ok)
 - [ ] On relaunch, restore review state and render overlays on correct frames
 
 ## 50 — Export Package (Still + notes.json)

@@ -83,3 +83,7 @@
 - RenderCore: Added HUD overlay renderer (timecode/frame/fps/res) as a texture composited in Metal.
 - RenderCore: Added burn-in renderer helper for export path (renders HUD overlay onto a still image).
 - Build hygiene: Fixed accidental `Package.swift` tools header corruption (restored `// swift-tools-version: 6.1`).
+
+## 2026-02-07 20:53 KST
+- Review: Added SQLite-backed ReviewStore with assets/review_items/annotations tables.
+- Review: Added normalized geometry models + round-trip tests for ReviewStore.

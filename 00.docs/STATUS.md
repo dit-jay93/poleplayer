@@ -1,8 +1,8 @@
 # STATUS
 
-Updated: 2026-02-07 17:03 KST
+Updated: 2026-02-07 20:53 KST
 
-Current phase: 20 — DecodeKit (AVFoundation decoding)
+Current phase: 40 — Review System (Annotations + Persistence)
 
 What’s done
 - Swift Package scaffold with modular targets (PlayerCore/DecodeKit/RenderCore/Review/Library/Export)
@@ -26,12 +26,16 @@ What’s done
 - LUT UI: Open LUT panel + Toggle (T) + intensity slider
 - RenderCore HUD overlay (TC/frame/FPS/res) composited in Metal
 - RenderCore burn-in renderer helper added for export path
+- ReviewStore (SQLite) added with assets/review_items/annotations tables
+- Review models include normalized geometry types; ReviewStore round-trip tests pass
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Precision frame accuracy spot-check on ProRes (random frames)
 - Add import drag & drop and basic recent items
 - Wire burn-in renderer into Export flow (future)
+- Implement annotation toolset UI + overlay rendering
+- Wire ReviewStore into app and restore on relaunch
 
 Blockers / Risks
 - Audio/video sync may drift (AssetReader frames are timer-driven)
