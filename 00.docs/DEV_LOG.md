@@ -46,3 +46,7 @@
 ## 2026-02-07 12:41 KST
 - Debug: Added Metal fallback checkerboard pattern when no frame is available and HUD counters for frame source/count/size/last frame timestamp.
 - This is intended to force visibility of the render path even if decode fails.
+
+## 2026-02-07 12:55 KST
+- Debug: Added render tick counters to confirm MTKView draw loop is active even if frames are missing.
+- Fix: Restored valid Swift tools comment in Package.swift (was corrupted to '/ /').

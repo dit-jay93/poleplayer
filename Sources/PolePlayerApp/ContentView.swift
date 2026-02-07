@@ -125,6 +125,8 @@ private struct HUDOverlay: View {
                 HUDRow(label: "VFrames", value: String(player.debugVideoFrames))
                 HUDRow(label: "FSize", value: debugFrameSize)
                 HUDRow(label: "LastF", value: debugLastFrame)
+                HUDRow(label: "RTicks", value: String(player.debugRenderTicks))
+                HUDRow(label: "LastR", value: debugLastRender)
             }
             Spacer()
         }
@@ -155,6 +157,11 @@ private struct HUDOverlay: View {
     private var debugLastFrame: String {
         if player.debugLastFrameAt == 0 { return "—" }
         return String(format: "%.2f", player.debugLastFrameAt)
+    }
+
+    private var debugLastRender: String {
+        if player.debugLastRenderAt == 0 { return "—" }
+        return String(format: "%.2f", player.debugLastRenderAt)
     }
 }
 

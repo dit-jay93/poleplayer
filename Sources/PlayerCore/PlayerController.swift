@@ -45,6 +45,8 @@ public final class PlayerController: ObservableObject {
     @Published public private(set) var debugLastFrameAt: Double = 0
     @Published public private(set) var debugFrameSize: CGSize = .zero
     @Published public private(set) var debugFrameSource: String = "none"
+    @Published public private(set) var debugRenderTicks: Int = 0
+    @Published public private(set) var debugLastRenderAt: Double = 0
 
     private let log = Logger(subsystem: "PolePlayer", category: "PlayerCore")
     private var timeObserverToken: Any?
@@ -91,6 +93,8 @@ public final class PlayerController: ObservableObject {
         debugLastFrameAt = 0
         debugFrameSize = .zero
         debugFrameSource = "none"
+        debugRenderTicks = 0
+        debugLastRenderAt = 0
     }
 
     public func openVideo(url: URL) {
@@ -176,6 +180,11 @@ public final class PlayerController: ObservableObject {
             return buffer
         }
         return nil
+    }
+
+    public func recordRenderTick(hostTime: CFTimeInterval) {
+        debugRenderTicks += 1
+        debugLastRenderAt = hostTime
     }
 
     private func attachTimeObserver() {

@@ -7,13 +7,19 @@ struct MetalVideoContainer: NSViewRepresentable {
 
     func makeNSView(context: Context) -> MetalVideoView {
         MetalVideoView(frame: .zero) { hostTime in
-            player.copyPixelBuffer(hostTime: hostTime)
+            Task { @MainActor in
+                player.recordRenderTick(hostTime: hostTime)
+            }
+            return player.copyPixelBuffer(hostTime: hostTime)
         }
     }
 
     func updateNSView(_ nsView: MetalVideoView, context: Context) {
         nsView.updateFrameProvider { hostTime in
-            player.copyPixelBuffer(hostTime: hostTime)
+            Task { @MainActor in
+                player.recordRenderTick(hostTime: hostTime)
+            }
+            return player.copyPixelBuffer(hostTime: hostTime)
         }
     }
 }

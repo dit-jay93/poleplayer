@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 12:41 KST
+Updated: 2026-02-07 12:55 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -32,6 +32,8 @@ Updated: 2026-02-07 12:41 KST
   - `VFrames`: number of frames delivered to renderer
   - `FSize`: pixel buffer size
   - `LastF`: last frame host timestamp
+  - `RTicks`: render loop tick count
+  - `LastR`: last render tick timestamp
 
 ## Automated smoke (headless decode)
 Ran AVFoundation probe via a Swift script to validate load + frame extract on current `TestClips`:
@@ -46,6 +48,7 @@ Ran AVFoundation probe via a Swift script to validate load + frame extract on cu
 - Video frames are visible (Metal viewer).
 - Checkerboard appears if no frames are arriving.
 - Frame counters update when frames arrive.
+- Render tick counters increase continuously.
 - Video plays smoothly for ProRes/H.264/H.265.
 - Frame step advances/rewinds by one frame.
 - HUD updates with frame index/timecode; resolution matches source.
