@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 02:32 KST
+Updated: 2026-02-07 11:41 KST
 
 Current phase: 10 — PlayerCore (M0 playback shell in progress)
 
@@ -11,6 +11,7 @@ What’s done
 - Pretendard fonts bundled + registered on launch
 - CI workflow added (build + test)
 - Headless AVFoundation smoke decode on TestClips (load + frame extract OK)
+- Fix: Video view now expands to avoid zero-size AVPlayerView (blank video issue)
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
