@@ -54,17 +54,6 @@ public final class PlayerController: ObservableObject {
         self.player.actionAtItemEnd = .pause
     }
 
-    @MainActor
-    deinit {
-        if let token = timeObserverToken {
-            player.removeTimeObserver(token)
-        }
-        if let observer = endObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        reverseTimer?.invalidate()
-    }
-
     public func clear() {
         stopReverseTimer()
         if let token = timeObserverToken {

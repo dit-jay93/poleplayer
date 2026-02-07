@@ -30,3 +30,6 @@
 
 ## 2026-02-07 12:02 KST
 - Fix: CI uses Swift 6.1.x on macos-latest; set Package.swift tools version to 6.1 to avoid build failure.
+
+## 2026-02-07 12:12 KST
+- Fix: removed actor-isolated deinit cleanup in PlayerController to avoid Swift 6.1 CI error (isolated deinit requires experimental flag). Cleanup remains in explicit `clear()` path.
