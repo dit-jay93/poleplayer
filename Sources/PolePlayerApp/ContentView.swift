@@ -19,11 +19,7 @@ struct ContentView: View {
                 lutIntensity: $appState.lutIntensity,
                 burnInEnabled: $appState.exportBurnInEnabled,
                 isAnnotating: $appState.isAnnotating,
-                activeTool: Binding(
-                    get: { appState.reviewSession?.activeTool ?? .rect },
-                    set: { appState.reviewSession?.activeTool = $0 }
-                ),
-                reviewAvailable: appState.reviewSession != nil
+                reviewSession: appState.reviewSession
             )
 
             GeometryReader { _ in
@@ -80,8 +76,7 @@ private struct TopBar: View {
     @Binding var lutIntensity: Double
     @Binding var burnInEnabled: Bool
     @Binding var isAnnotating: Bool
-    @Binding var activeTool: AnnotationType
-    let reviewAvailable: Bool
+    let reviewSession: ReviewSession?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -108,20 +103,11 @@ private struct TopBar: View {
             Toggle("Burn-in", isOn: $burnInEnabled)
                 .toggleStyle(.switch)
                 .font(AppFont.caption)
-            if reviewAvailable {
-                Toggle("Annotate", isOn: $isAnnotating)
-                    .toggleStyle(.switch)
-                    .font(AppFont.caption)
-                Picker("Tool", selection: $activeTool) {
-                    Text("Pen").tag(AnnotationType.pen)
-                    Text("Rect").tag(AnnotationType.rect)
-                    Text("Circle").tag(AnnotationType.circle)
-                    Text("Arrow").tag(AnnotationType.arrow)
-                    Text("Text").tag(AnnotationType.text)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 320)
-                .disabled(!isAnnotating)
+            if let reviewSession {
+                ReviewControls(
+                    session: reviewSession,
+                    isAnnotating: $isAnnotating
+                )
             }
             Button("LUT…", action: onOpenLUT)
                 .buttonStyle(.bordered)
@@ -136,6 +122,73 @@ private struct TopBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Theme.topBarBackground)
+    }
+}
+
+private struct ReviewControls: View {
+    @ObservedObject var session: ReviewSession
+    @Binding var isAnnotating: Bool
+
+    var body: some View {
+        Toggle("Annotate", isOn: $isAnnotating)
+            .toggleStyle(.switch)
+            .font(AppFont.caption)
+
+        Toggle("Select", isOn: selectionBinding)
+            .toggleStyle(.switch)
+            .font(AppFont.caption)
+            .disabled(!isAnnotating)
+
+        Picker("Tool", selection: toolBinding) {
+            Text("Pen").tag(AnnotationType.pen)
+            Text("Rect").tag(AnnotationType.rect)
+            Text("Circle").tag(AnnotationType.circle)
+            Text("Arrow").tag(AnnotationType.arrow)
+            Text("Text").tag(AnnotationType.text)
+        }
+        .pickerStyle(.segmented)
+        .frame(width: 320)
+        .disabled(!isAnnotating || session.isSelecting)
+
+        if let selected = session.selectedAnnotation {
+            Button("Delete") {
+                session.deleteSelected()
+            }
+            .buttonStyle(.bordered)
+            .font(AppFont.caption)
+
+            if selected.type == .text {
+                TextField("Text", text: selectedTextBinding)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 180)
+            }
+        }
+    }
+
+    private var toolBinding: Binding<AnnotationType> {
+        Binding(
+            get: { session.activeTool },
+            set: { session.activeTool = $0 }
+        )
+    }
+
+    private var selectionBinding: Binding<Bool> {
+        Binding(
+            get: { session.isSelecting },
+            set: { value in
+                session.isSelecting = value
+                if !value {
+                    session.clearSelection()
+                }
+            }
+        )
+    }
+
+    private var selectedTextBinding: Binding<String> {
+        Binding(
+            get: { session.selectedText ?? "" },
+            set: { session.updateSelectedText($0) }
+        )
     }
 }
 
