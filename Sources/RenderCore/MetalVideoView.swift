@@ -41,6 +41,10 @@ public final class MetalVideoView: NSView {
     public func updateFrameProvider(_ provider: FrameProvider?) {
         frameProvider = provider
     }
+
+    public func updateLUT(cube: LUTCube?, intensity: Float, enabled: Bool) {
+        renderer?.updateLUT(cube: cube, intensity: intensity, enabled: enabled)
+    }
 }
 
 extension MetalVideoView: MTKViewDelegate {

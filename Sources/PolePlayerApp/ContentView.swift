@@ -1,5 +1,6 @@
 import AppKit
 import PlayerCore
+import RenderCore
 import SwiftUI
 
 struct ContentView: View {
@@ -9,14 +10,21 @@ struct ContentView: View {
         VStack(spacing: 0) {
             TopBar(
                 title: appState.currentURL?.lastPathComponent ?? "No Media Loaded",
-                onOpen: appState.openPanel
+                onOpen: appState.openPanel,
+                onOpenLUT: appState.openLUTPanel,
+                lutName: appState.lutName,
+                lutEnabled: $appState.lutEnabled,
+                lutIntensity: $appState.lutIntensity
             )
 
             GeometryReader { _ in
                 ZStack {
                     ViewerSurface(
                         player: appState.playerController,
-                        image: appState.currentImage
+                        image: appState.currentImage,
+                        lutCube: appState.lutCube,
+                        lutEnabled: appState.lutEnabled,
+                        lutIntensity: appState.lutIntensity
                     )
 
                 HUDOverlay(
@@ -54,6 +62,10 @@ struct ContentView: View {
 private struct TopBar: View {
     let title: String
     let onOpen: () -> Void
+    let onOpenLUT: () -> Void
+    let lutName: String?
+    @Binding var lutEnabled: Bool
+    @Binding var lutIntensity: Double
 
     var body: some View {
         HStack(spacing: 12) {
@@ -64,6 +76,22 @@ private struct TopBar: View {
                 .font(AppFont.body)
                 .lineLimit(1)
             Spacer()
+            if let lutName {
+                Toggle("LUT", isOn: $lutEnabled)
+                    .toggleStyle(.switch)
+                    .font(AppFont.caption)
+                Slider(value: $lutIntensity, in: 0...1)
+                    .frame(width: 120)
+                    .disabled(!lutEnabled)
+                Text(lutName)
+                    .font(AppFont.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Button("LUT…", action: onOpenLUT)
+                .buttonStyle(.bordered)
+                .font(AppFont.body)
             Button("Open…", action: onOpen)
                 .buttonStyle(.borderedProminent)
                 .font(AppFont.body)
@@ -77,6 +105,9 @@ private struct TopBar: View {
 private struct ViewerSurface: View {
     @ObservedObject var player: PlayerController
     let image: NSImage?
+    let lutCube: LUTCube?
+    let lutEnabled: Bool
+    let lutIntensity: Double
 
     var body: some View {
         ZStack {
@@ -86,7 +117,12 @@ private struct ViewerSurface: View {
                     .scaledToFit()
                     .padding(12)
             } else if player.hasVideo {
-                MetalVideoContainer(player: player)
+                MetalVideoContainer(
+                    player: player,
+                    lutCube: lutCube,
+                    lutEnabled: lutEnabled,
+                    lutIntensity: lutIntensity
+                )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(4)
             } else {

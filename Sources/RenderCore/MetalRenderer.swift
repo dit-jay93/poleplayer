@@ -4,11 +4,27 @@ import MetalKit
 import CoreVideo
 
 final class MetalRenderer {
+    struct LUTParams {
+        var domainMin: SIMD4<Float>
+        var domainMax: SIMD4<Float>
+        var intensity: Float
+        var enabled: Float
+        var padding: SIMD2<Float> = .zero
+    }
+
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLRenderPipelineState
     private var textureCache: CVMetalTextureCache?
     private var fallbackTexture: MTLTexture?
+    private var lutTexture: MTLTexture?
+    private var identityLUT: MTLTexture?
+    private var lutParams = LUTParams(
+        domainMin: SIMD4<Float>(0, 0, 0, 0),
+        domainMax: SIMD4<Float>(1, 1, 1, 0),
+        intensity: 1.0,
+        enabled: 0.0
+    )
 
     init?(device: MTLDevice) {
         self.device = device
@@ -34,6 +50,8 @@ final class MetalRenderer {
 
         CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &textureCache)
         fallbackTexture = makeFallbackTexture(device: device)
+        identityLUT = makeIdentityLUTTexture(device: device, size: 2)
+        lutTexture = identityLUT
     }
 
     @MainActor
@@ -51,9 +69,13 @@ final class MetalRenderer {
         if let pixelBuffer,
            let texture = makeTexture(from: pixelBuffer) {
             encoder.setFragmentTexture(texture, index: 0)
+            encoder.setFragmentTexture(lutTexture ?? identityLUT, index: 1)
+            encoder.setFragmentBytes(&lutParams, length: MemoryLayout<LUTParams>.stride, index: 0)
             encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         } else if let fallbackTexture {
             encoder.setFragmentTexture(fallbackTexture, index: 0)
+            encoder.setFragmentTexture(lutTexture ?? identityLUT, index: 1)
+            encoder.setFragmentBytes(&lutParams, length: MemoryLayout<LUTParams>.stride, index: 0)
             encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }
 
@@ -120,6 +142,113 @@ final class MetalRenderer {
 
         return texture
     }
+
+    private func makeIdentityLUTTexture(device: MTLDevice, size: Int) -> MTLTexture? {
+        guard size > 1 else { return nil }
+        let descriptor = MTLTextureDescriptor()
+        descriptor.textureType = .type3D
+        descriptor.pixelFormat = MTLPixelFormat.rgba16Float
+        descriptor.width = size
+        descriptor.height = size
+        descriptor.depth = size
+        descriptor.mipmapLevelCount = 1
+        descriptor.usage = MTLTextureUsage.shaderRead
+        descriptor.storageMode = MTLStorageMode.shared
+
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+
+        var data = [Float16](repeating: 0, count: size * size * size * 4)
+        var index = 0
+        for r in 0..<size {
+            for g in 0..<size {
+                for b in 0..<size {
+                    let rf = Float(r) / Float(size - 1)
+                    let gf = Float(g) / Float(size - 1)
+                    let bf = Float(b) / Float(size - 1)
+                    data[index + 0] = Float16(rf)
+                    data[index + 1] = Float16(gf)
+                    data[index + 2] = Float16(bf)
+                    data[index + 3] = Float16(1.0)
+                    index += 4
+                }
+            }
+        }
+
+        let bytesPerRow = size * 4 * MemoryLayout<Float16>.size
+        let bytesPerImage = size * size * 4 * MemoryLayout<Float16>.size
+        data.withUnsafeBytes { bytes in
+            if let baseAddress = bytes.baseAddress {
+                texture.replace(
+                    region: MTLRegionMake3D(0, 0, 0, size, size, size),
+                    mipmapLevel: 0,
+                    slice: 0,
+                    withBytes: baseAddress,
+                    bytesPerRow: bytesPerRow,
+                    bytesPerImage: bytesPerImage
+                )
+            }
+        }
+
+        return texture
+    }
+
+    private func makeLUTTexture(from cube: LUTCube) -> MTLTexture? {
+        let size = cube.size
+        guard size > 1 else { return nil }
+        let descriptor = MTLTextureDescriptor()
+        descriptor.textureType = .type3D
+        descriptor.pixelFormat = MTLPixelFormat.rgba16Float
+        descriptor.width = size
+        descriptor.height = size
+        descriptor.depth = size
+        descriptor.mipmapLevelCount = 1
+        descriptor.usage = MTLTextureUsage.shaderRead
+        descriptor.storageMode = MTLStorageMode.shared
+
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+
+        var data = [Float16](repeating: 0, count: size * size * size * 4)
+        for i in 0..<cube.values.count {
+            let base = i * 4
+            let value = cube.values[i]
+            data[base + 0] = Float16(value.x)
+            data[base + 1] = Float16(value.y)
+            data[base + 2] = Float16(value.z)
+            data[base + 3] = Float16(1.0)
+        }
+
+        let bytesPerRow = size * 4 * MemoryLayout<Float16>.size
+        let bytesPerImage = size * size * 4 * MemoryLayout<Float16>.size
+        data.withUnsafeBytes { bytes in
+            if let baseAddress = bytes.baseAddress {
+                texture.replace(
+                    region: MTLRegionMake3D(0, 0, 0, size, size, size),
+                    mipmapLevel: 0,
+                    slice: 0,
+                    withBytes: baseAddress,
+                    bytesPerRow: bytesPerRow,
+                    bytesPerImage: bytesPerImage
+                )
+            }
+        }
+
+        return texture
+    }
+
+    func updateLUT(cube: LUTCube?, intensity: Float, enabled: Bool) {
+        if let cube {
+            lutTexture = makeLUTTexture(from: cube) ?? identityLUT
+            lutParams.domainMin = SIMD4<Float>(cube.domainMin.x, cube.domainMin.y, cube.domainMin.z, 0)
+            lutParams.domainMax = SIMD4<Float>(cube.domainMax.x, cube.domainMax.y, cube.domainMax.z, 0)
+            lutParams.enabled = enabled ? 1.0 : 0.0
+        } else {
+            lutTexture = identityLUT
+            lutParams.domainMin = SIMD4<Float>(0, 0, 0, 0)
+            lutParams.domainMax = SIMD4<Float>(1, 1, 1, 0)
+            lutParams.enabled = 0.0
+        }
+        lutParams.intensity = max(0, min(intensity, 1.0))
+    }
 }
 
 private extension MetalRenderer {
@@ -153,9 +282,35 @@ private extension MetalRenderer {
         return out;
     }
 
-    fragment float4 fragment_main(VertexOut in [[stage_in]], texture2d<float> colorTexture [[texture(0)]]) {
+    struct LUTParams {
+        float4 domainMin;
+        float4 domainMax;
+        float intensity;
+        float enabled;
+        float2 padding;
+    };
+
+    fragment float4 fragment_main(
+        VertexOut in [[stage_in]],
+        texture2d<float> colorTexture [[texture(0)]],
+        texture3d<float> lutTexture [[texture(1)]],
+        constant LUTParams& params [[buffer(0)]]
+    ) {
         constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
-        return colorTexture.sample(textureSampler, in.texCoord);
+        float4 color = colorTexture.sample(textureSampler, in.texCoord);
+        if (params.enabled < 0.5) {
+            return color;
+        }
+
+        float3 domainMin = params.domainMin.xyz;
+        float3 domainMax = params.domainMax.xyz;
+        float3 denom = max(domainMax - domainMin, float3(1e-6));
+        float3 normalized = clamp((color.rgb - domainMin) / denom, 0.0, 1.0);
+
+        constexpr sampler lutSampler (mag_filter::linear, min_filter::linear, address::clamp_to_edge);
+        float3 lutColor = lutTexture.sample(lutSampler, normalized).rgb;
+        float3 mixed = mix(color.rgb, lutColor, params.intensity);
+        return float4(mixed, color.a);
     }
     """
 }

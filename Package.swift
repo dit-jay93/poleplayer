@@ -44,6 +44,10 @@ let package = Package(
         .testTarget(
             name: "PlayerCoreTests",
             dependencies: ["PlayerCore"]
+        ),
+        .testTarget(
+            name: "RenderCoreTests",
+            dependencies: ["RenderCore"]
         )
     ]
 )
