@@ -1,8 +1,8 @@
 # STATUS
 
-Updated: 2026-02-07 21:02 KST
+Updated: 2026-02-07 21:20 KST
 
-Current phase: 40 — Review System (Annotations + Persistence)
+Current phase: 50 — Export Package (Still + notes.json)
 
 What’s done
 - Swift Package scaffold with modular targets (PlayerCore/DecodeKit/RenderCore/Review/Library/Export)
@@ -30,14 +30,17 @@ What’s done
 - Review models include normalized geometry types; ReviewStore round-trip tests pass
 - Annotation toolset UI added (pen/rect/circle/arrow/text)
 - ReviewSession wired to asset hashing; review state loads on open and overlays render in Metal
+- Export pipeline added: still capture + notes.json (schema v1.0.0)
+- Export UI: Burn-in toggle + Export… panel (choose folder) + naming template
+- notes.json includes asset hash + timeline metadata + annotations
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Precision frame accuracy spot-check on ProRes (random frames)
 - Add import drag & drop and basic recent items
-- Wire burn-in renderer into Export flow (future)
 - Annotation editing (select/move/delete) + text editing
 - Confirm relaunch restore flow with a reference clip
+- Benchmark automation (Part 60)
 
 Blockers / Risks
 - Audio/video sync may drift (AssetReader frames are timer-driven)
@@ -52,3 +55,5 @@ What Jay can test right now
 - I = set In point, O = set Out point, U = clear In/Out, P = toggle Loop
 - Verify HUD (TC/frame/FPS/res) + debug counters (Src/VFrames/FSize/LastF/RTicks/LastR)
 - Confirm checkerboard appears if no frames are arriving
+- Toggle Annotate to draw pen/rect/circle/arrow/text; relaunch to confirm restore
+- Toggle Burn-in, click Export…, choose a folder, verify package contains PNG + notes.json

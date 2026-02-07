@@ -93,3 +93,10 @@
 - RenderCore: Added overlay composer for HUD + annotations; annotations render in Metal overlay.
 - Review: Added ReviewSession (load/create, draft, persist) and asset hashing for DB restore.
 - Tests: Added normalized geometry clamp tests; `swift test` passes.
+
+## 2026-02-07 21:20 KST
+- Export: Added Export module with notes.json writer (schema v1.0.0) and package builder.
+- Export: Still capture wired to precision decoder (fallback to current pixel buffer).
+- UI: Added Burn-in toggle and Export… panel (folder chooser + naming template).
+- Notes: Export writes asset hash + timeline metadata + annotations into notes.json.
+- Tests: Added ExportNotes tests; `swift test` passes.

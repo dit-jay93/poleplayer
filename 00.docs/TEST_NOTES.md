@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 21:02 KST
+Updated: 2026-02-07 21:20 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -41,6 +41,11 @@ Updated: 2026-02-07 21:02 KST
    - Drag to draw; Text places a “Note” at click point.
    - Use I/O to set a range and draw an annotation; it should persist across frames in that range.
    - Quit and relaunch, reopen the same clip, and confirm annotations restore.
+13. Export package:
+   - Toggle Burn-in on if you want HUD stamped on the still.
+   - Click Export… and choose a destination folder.
+   - Verify output folder contains a PNG still + `notes.json`.
+   - Open `notes.json` and confirm asset hash + timeline metadata + annotations are present.
 
 ## Debug visibility checks (NEW)
 - If video frames are not visible, a **checkerboard debug pattern** should still appear.
@@ -76,5 +81,5 @@ Ran AVFoundation probe via a Swift script to validate load + frame extract on cu
 
 ## Known issues / limitations
 - AssetReader video frames are timer-driven; audio/video sync may drift.
-- Precision path still uses AVPlayer seek with zero tolerance (DecodeKit precision path not wired yet).
+- Precision path uses AVAssetImageGenerator (DecodeKit) for frozen frames on step/seek.
 - Reverse playback uses manual frame stepping (may feel slower on long-GOP clips).

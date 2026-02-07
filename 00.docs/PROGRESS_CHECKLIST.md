@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 21:02 KST
+Last updated: 2026-02-07 21:20 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -40,11 +40,11 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [x] On relaunch, restore review state and render overlays on correct frames (commit: 70858dd, time: 2026-02-07 21:02 KST, verify: `swift build` + `swift test` ok; manual restore pending)
 
 ## 50 — Export Package (Still + notes.json)
-- [ ] Implement still capture from current frame (PNG)
-- [ ] Implement burn-in still capture option
-- [ ] Generate notes.json per schema version 1.0.0
-- [ ] Include asset hash and timeline metadata in notes.json
-- [ ] Provide export naming template and destination selection
+- [x] Implement still capture from current frame (PNG) (commit: f3b9404, time: 2026-02-07 21:20 KST, verify: `swift build` ok)
+- [x] Implement burn-in still capture option (commit: f3b9404, time: 2026-02-07 21:20 KST, verify: `swift build` ok)
+- [x] Generate notes.json per schema version 1.0.0 (commit: f3b9404, time: 2026-02-07 21:20 KST, verify: `swift test` ok)
+- [x] Include asset hash and timeline metadata in notes.json (commit: f3b9404, time: 2026-02-07 21:20 KST, verify: `swift test` ok)
+- [x] Provide export naming template and destination selection (commit: f3b9404, time: 2026-02-07 21:20 KST, verify: manual export in UI + `swift build` ok)
 
 ## 60 — Benchmark Automation (Scripted Tests)
 - [ ] Implement step accuracy test: +1 frame x 1000 with expected vs actual

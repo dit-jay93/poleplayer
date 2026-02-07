@@ -33,11 +33,16 @@
 ---
 
 ## Annotation Types
-- rect: x,y,w,h + rotation_deg
-- circle: center x,y + rx,ry (or w,h) (implementer choice, document it)
-- arrow: start/end points
-- pen: list of points (x,y,t,p)
-- text: anchor + content
+- rect: x,y,w,h + rotation_deg (rotation currently 0)
+- circle: x,y,w,h
+- arrow: start/end points {x,y}
+- pen: list of points [{x,y}]
+- text: x,y + text
+
+### Style
+- stroke_rgba: [r,g,b,a]
+- fill_rgba: [r,g,b,a]
+- stroke_width: number
 
 ---
 
