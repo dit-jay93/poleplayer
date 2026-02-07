@@ -1,8 +1,8 @@
 # STATUS
 
-Updated: 2026-02-07 21:20 KST
+Updated: 2026-02-07 21:28 KST
 
-Current phase: 50 — Export Package (Still + notes.json)
+Current phase: 60 — Benchmark Automation (Scripted Tests)
 
 What’s done
 - Swift Package scaffold with modular targets (PlayerCore/DecodeKit/RenderCore/Review/Library/Export)
@@ -33,6 +33,8 @@ What’s done
 - Export pipeline added: still capture + notes.json (schema v1.0.0)
 - Export UI: Burn-in toggle + Export… panel (choose folder) + naming template
 - notes.json includes asset hash + timeline metadata + annotations
+- Bench CLI: step accuracy + random seek + LUT toggle harness with JSON report
+- CI: reduced bench run (auto-generated clip) added
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
@@ -40,7 +42,7 @@ What’s next
 - Add import drag & drop and basic recent items
 - Annotation editing (select/move/delete) + text editing
 - Confirm relaunch restore flow with a reference clip
-- Benchmark automation (Part 60)
+- Fix keyboard shortcuts (deferred to last per request)
 
 Blockers / Risks
 - Audio/video sync may drift (AssetReader frames are timer-driven)
@@ -57,3 +59,4 @@ What Jay can test right now
 - Confirm checkerboard appears if no frames are arriving
 - Toggle Annotate to draw pen/rect/circle/arrow/text; relaunch to confirm restore
 - Toggle Burn-in, click Export…, choose a folder, verify package contains PNG + notes.json
+- Run bench: `swift run PolePlayerBench --input /path/to/clip.mov --output /path/to/output`

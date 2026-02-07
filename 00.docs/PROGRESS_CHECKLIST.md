@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 21:20 KST
+Last updated: 2026-02-07 21:28 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -47,8 +47,8 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [x] Provide export naming template and destination selection (commit: f3b9404, time: 2026-02-07 21:20 KST, verify: manual export in UI + `swift build` ok)
 
 ## 60 — Benchmark Automation (Scripted Tests)
-- [ ] Implement step accuracy test: +1 frame x 1000 with expected vs actual
-- [ ] Implement random seek test: 100 seeks, measure accuracy and latency
-- [ ] Implement LUT toggle consistency test harness
-- [ ] Output results as benchmark_report.json
-- [ ] Define pass/fail thresholds matching BENCHMARK.md
+- [x] Implement step accuracy test: +1 frame x 1000 with expected vs actual (commit: 900ef21, time: 2026-02-07 21:28 KST, verify: `swift build` ok; manual bench run pending)
+- [x] Implement random seek test: 100 seeks, measure accuracy and latency (commit: 900ef21, time: 2026-02-07 21:28 KST, verify: `swift build` ok; manual bench run pending)
+- [x] Implement LUT toggle consistency test harness (commit: 900ef21, time: 2026-02-07 21:28 KST, verify: `swift build` ok; manual bench run pending)
+- [x] Output results as benchmark_report.json (commit: 900ef21, time: 2026-02-07 21:28 KST, verify: `swift build` ok; manual bench run pending)
+- [x] Define pass/fail thresholds matching BENCHMARK.md (commit: 900ef21, time: 2026-02-07 21:28 KST, verify: `swift test` ok)

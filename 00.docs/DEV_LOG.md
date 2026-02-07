@@ -100,3 +100,8 @@
 - UI: Added Burn-in toggle and Export… panel (folder chooser + naming template).
 - Notes: Export writes asset hash + timeline metadata + annotations into notes.json.
 - Tests: Added ExportNotes tests; `swift test` passes.
+
+## 2026-02-07 21:28 KST
+- Bench: Added PolePlayerBench CLI (step accuracy, random seek, LUT toggle harness) with JSON report output.
+- Bench: CI runs reduced benchmark on generated H.264 clip.
+- Docs: BENCHMARK.md updated with run instructions.

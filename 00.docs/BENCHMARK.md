@@ -61,3 +61,14 @@
 2) Run scripted step test: +1 frame x 1000, record expected vs actual.
 3) Random seek test: 100 random seeks; record accuracy and time.
 4) LUT toggle test: toggle every 10 frames for 200 frames; check consistency.
+
+---
+
+## Automation CLI
+Run locally:
+- `swift run PolePlayerBench --input /path/to/clip.mov --output /path/to/output [--lut /path/to/lut.cube]`
+- Output: `/path/to/output/benchmark_report.json`
+
+CI / reduced mode:
+- `swift run PolePlayerBench --ci --output /tmp/poleplayer_bench`
+- Generates a tiny H.264 clip and runs a reduced iteration set.

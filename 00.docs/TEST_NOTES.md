@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 21:20 KST
+Updated: 2026-02-07 21:28 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -46,6 +46,10 @@ Updated: 2026-02-07 21:20 KST
    - Click Export… and choose a destination folder.
    - Verify output folder contains a PNG still + `notes.json`.
    - Open `notes.json` and confirm asset hash + timeline metadata + annotations are present.
+14. Benchmark (CLI):
+   - `swift run PolePlayerBench --input /path/to/clip.mov --output /path/to/output`
+   - Confirm `/path/to/output/benchmark_report.json` is generated.
+   - Optional LUT test: add `--lut /path/to/lut.cube`.
 
 ## Debug visibility checks (NEW)
 - If video frames are not visible, a **checkerboard debug pattern** should still appear.
