@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 13:45 KST
+Updated: 2026-02-07 14:00 KST
 
 Current phase: 10 — PlayerCore (M0 playback shell in progress)
 
@@ -16,6 +16,7 @@ What’s done
 - Debug pattern (checkerboard) + frame counters + render ticks added
 - SwiftUI views now observe PlayerController directly so state changes render
 - Precision path uses AVAssetImageGenerator to render frozen frame on seek/step
+- HUD now distinguishes frozen precision frames: `Src` shows `imageGen` when frozen; `PrecSrc` shows imageGen or imageGen-fail (recent)
 
 What’s next
 - Re-test precision frame step/seek with imageGen path

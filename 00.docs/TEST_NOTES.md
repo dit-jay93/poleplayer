@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 13:18 KST
+Updated: 2026-02-07 14:00 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -34,6 +34,8 @@ Updated: 2026-02-07 13:18 KST
   - `LastF`: last frame host timestamp
   - `RTicks`: render loop tick count
   - `LastR`: last render tick timestamp
+  - `PrecSrc`: imageGen usage indicator (shows `imageGen` or `imageGen-fail` for ~2s after precision step/seek)
+  - When precision frame step/seek runs, `Src` should show `imageGen` while the frozen frame is active
 
 ## Automated smoke (headless decode)
 Ran AVFoundation probe via a Swift script to validate load + frame extract on current `TestClips`:

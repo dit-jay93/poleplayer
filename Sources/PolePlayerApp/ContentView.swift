@@ -127,6 +127,7 @@ private struct HUDOverlay: View {
                 HUDRow(label: "LastF", value: debugLastFrame)
                 HUDRow(label: "RTicks", value: String(player.debugRenderTicks))
                 HUDRow(label: "LastR", value: debugLastRender)
+                HUDRow(label: "PrecSrc", value: precisionSource)
             }
             Spacer()
         }
@@ -162,6 +163,15 @@ private struct HUDOverlay: View {
     private var debugLastRender: String {
         if player.debugLastRenderAt == 0 { return "—" }
         return String(format: "%.2f", player.debugLastRenderAt)
+    }
+
+    private var precisionSource: String {
+        if player.debugLastPrecisionAt == 0 { return "—" }
+        let age = CACurrentMediaTime() - player.debugLastPrecisionAt
+        if age < 2.0 {
+            return "\(player.debugLastPrecisionSource) (recent)"
+        }
+        return "—"
     }
 }
 

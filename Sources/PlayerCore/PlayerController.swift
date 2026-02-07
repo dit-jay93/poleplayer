@@ -47,6 +47,8 @@ public final class PlayerController: ObservableObject {
     @Published public private(set) var debugFrameSource: String = "none"
     @Published public private(set) var debugRenderTicks: Int = 0
     @Published public private(set) var debugLastRenderAt: Double = 0
+    @Published public private(set) var debugLastPrecisionSource: String = "—"
+    @Published public private(set) var debugLastPrecisionAt: Double = 0
 
     private let log = Logger(subsystem: "PolePlayer", category: "PlayerCore")
     private var timeObserverToken: Any?
@@ -98,6 +100,8 @@ public final class PlayerController: ObservableObject {
         debugFrameSource = "none"
         debugRenderTicks = 0
         debugLastRenderAt = 0
+        debugLastPrecisionSource = "—"
+        debugLastPrecisionAt = 0
     }
 
     public func openVideo(url: URL) {
@@ -173,7 +177,8 @@ public final class PlayerController: ObservableObject {
                 debugVideoFrames += 1
                 debugLastFrameAt = hostTime
                 debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
-                debugFrameSource = "assetReader"
+                let frozen = assetReaderSource?.isFrozenFrameActive() == true
+                debugFrameSource = frozen ? "imageGen" : "assetReader"
             }
             return buffer
         }
@@ -198,15 +203,24 @@ public final class PlayerController: ObservableObject {
         imageGenQueue.async { [weak self] in
             guard let self else { return }
             var actualTime = CMTime.zero
-            guard let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: &actualTime) else { return }
-            Task { @MainActor in
-                let buffer = self.makePixelBuffer(from: cgImage)
-                self.assetReaderSource?.setFrozenFrame(buffer)
-                if let buffer {
-                    self.debugVideoFrames += 1
-                    self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
-                    self.debugFrameSource = "imageGen"
+            do {
+                let cgImage = try imageGenerator.copyCGImage(at: time, actualTime: &actualTime)
+                Task { @MainActor in
+                    let buffer = self.makePixelBuffer(from: cgImage)
+                    self.assetReaderSource?.setFrozenFrame(buffer)
+                    self.debugLastPrecisionSource = "imageGen"
+                    self.debugLastPrecisionAt = CACurrentMediaTime()
+                    if let buffer {
+                        self.debugVideoFrames += 1
+                        self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
+                    }
                 }
+            } catch {
+                Task { @MainActor in
+                    self.debugLastPrecisionSource = "imageGen-fail"
+                    self.debugLastPrecisionAt = CACurrentMediaTime()
+                }
+                self.log.error("ImageGen failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

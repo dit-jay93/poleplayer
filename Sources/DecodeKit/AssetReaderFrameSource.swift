@@ -59,6 +59,13 @@ public final class AssetReaderFrameSource {
         return buffer
     }
 
+    public func isFrozenFrameActive() -> Bool {
+        lock.lock()
+        let active = frozenBuffer != nil
+        lock.unlock()
+        return active
+    }
+
     public func setFrozenFrame(_ buffer: CVPixelBuffer?) {
         lock.lock()
         frozenBuffer = buffer

@@ -59,3 +59,6 @@
 
 ## 2026-02-07 13:45 KST
 - Precision: Added AVAssetImageGenerator path to produce frozen frames on precision seek/step (imageGen -> CVPixelBuffer -> Metal).
+
+## 2026-02-07 14:00 KST
+- Debug: Differentiated frozen imageGen frames vs assetReader in HUD (`Src` now shows `imageGen` when frozen). Added precision failure indicator (`imageGen-fail`) to confirm imageGen attempts even if frame creation fails.
