@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 02:32 KST
+Updated: 2026-02-07 12:28 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -35,12 +35,13 @@ Ran AVFoundation probe via a Swift script to validate load + frame extract on cu
 - `images.jpeg`: loaded, 284x177
 
 ## Expected results
+- Video frames are visible (Metal viewer).
 - Video plays smoothly for ProRes/H.264/H.265.
 - Frame step advances/rewinds by one frame.
 - HUD updates with frame index/timecode; resolution matches source.
 - Mode pill shows REAL-TIME during play, PRECISION during frame-step.
 
 ## Known issues / limitations
-- Precision path is AVPlayer seek with zero tolerance (DecodeKit precision path not wired yet).
+- AssetReader video frames are timer-driven; audio/video sync may drift.
+- Precision path still uses AVPlayer seek with zero tolerance (DecodeKit precision path not wired yet).
 - Reverse playback uses manual frame stepping (may feel slower on long-GOP clips).
-- Manual GUI playback verification still needed on these clips.

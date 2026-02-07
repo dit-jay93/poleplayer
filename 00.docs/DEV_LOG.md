@@ -38,3 +38,7 @@
 - Plan execution: switched viewer rendering to Metal (MTKView + CVPixelBuffer -> MTLTexture) to bypass AVPlayerView blank video issue.
 - Added AVPlayerItemVideoOutput in PlayerCore to pull BGRA pixel buffers for Metal display.
 - Metal shader is embedded as a source string in RenderCore to avoid SwiftPM .metal handling issues.
+
+## 2026-02-07 12:28 KST
+- Implemented AssetReader-based decode path (DecodeKit.AssetReaderFrameSource) and wired PlayerCore to use it when Metal rendering is enabled.
+- Real-time frames now come from AVAssetReader on a timer; audio still uses AVPlayer and may drift.

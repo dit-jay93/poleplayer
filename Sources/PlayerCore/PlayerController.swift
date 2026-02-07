@@ -2,6 +2,7 @@
 import Combine
 import Foundation
 import os
+import DecodeKit
 
 public enum PlaybackMode: String {
     case realTime = "REAL-TIME"
@@ -47,6 +48,7 @@ public final class PlayerController: ObservableObject {
     private var reverseTimer: Timer?
     private var asset: AVAsset?
     private var videoOutput: AVPlayerItemVideoOutput?
+    private var assetReaderSource: AssetReaderFrameSource?
 
     private let preferredTimeScale: CMTimeScale = 600
 
@@ -66,6 +68,8 @@ public final class PlayerController: ObservableObject {
         player.replaceCurrentItem(with: nil)
         asset = nil
         videoOutput = nil
+        assetReaderSource?.stop()
+        assetReaderSource = nil
         timeObserverToken = nil
         endObserver = nil
         hasVideo = false
@@ -127,6 +131,10 @@ public final class PlayerController: ObservableObject {
             player.replaceCurrentItem(with: item)
             hasVideo = true
 
+            if FeatureFlags.enableAssetReaderRenderer {
+                assetReaderSource = AssetReaderFrameSource(asset: asset, track: track, fps: fps)
+            }
+
             attachTimeObserver()
             attachEndObserver(item: item)
 
@@ -137,6 +145,9 @@ public final class PlayerController: ObservableObject {
     }
 
     public func copyPixelBuffer(hostTime: CFTimeInterval) -> CVPixelBuffer? {
+        if FeatureFlags.enableAssetReaderRenderer {
+            return assetReaderSource?.currentPixelBuffer()
+        }
         guard let output = videoOutput else { return nil }
         let itemTime = output.itemTime(forHostTime: hostTime)
         if output.hasNewPixelBuffer(forItemTime: itemTime) {
@@ -198,6 +209,9 @@ public final class PlayerController: ObservableObject {
         player.rate = 1.0
         playbackRate = 1.0
         isPlaying = true
+        if FeatureFlags.enableAssetReaderRenderer {
+            assetReaderSource?.start()
+        }
         log.info("Play")
     }
 
@@ -206,6 +220,9 @@ public final class PlayerController: ObservableObject {
         player.rate = 0
         playbackRate = 0
         isPlaying = false
+        if FeatureFlags.enableAssetReaderRenderer {
+            assetReaderSource?.stop()
+        }
         log.info("Pause")
     }
 
@@ -281,6 +298,9 @@ public final class PlayerController: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.updateDerivedState(for: self.player.currentTime())
+                if FeatureFlags.enableAssetReaderRenderer {
+                    self.assetReaderSource?.restart(atSeconds: seconds)
+                }
             }
         }
     }
@@ -308,6 +328,7 @@ public final class PlayerController: ObservableObject {
 
 public enum FeatureFlags {
     public static let enableManualReversePlayback = true
+    public static let enableAssetReaderRenderer = true
 }
 
 public enum TimecodeFormatter {
