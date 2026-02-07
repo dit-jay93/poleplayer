@@ -1,6 +1,7 @@
 import AppKit
 import PlayerCore
 import RenderCore
+import Review
 import SwiftUI
 
 struct ContentView: View {
@@ -14,7 +15,13 @@ struct ContentView: View {
                 onOpenLUT: appState.openLUTPanel,
                 lutName: appState.lutName,
                 lutEnabled: $appState.lutEnabled,
-                lutIntensity: $appState.lutIntensity
+                lutIntensity: $appState.lutIntensity,
+                isAnnotating: $appState.isAnnotating,
+                activeTool: Binding(
+                    get: { appState.reviewSession?.activeTool ?? .rect },
+                    set: { appState.reviewSession?.activeTool = $0 }
+                ),
+                reviewAvailable: appState.reviewSession != nil
             )
 
             GeometryReader { _ in
@@ -24,7 +31,9 @@ struct ContentView: View {
                         image: appState.currentImage,
                         lutCube: appState.lutCube,
                         lutEnabled: appState.lutEnabled,
-                        lutIntensity: appState.lutIntensity
+                        lutIntensity: appState.lutIntensity,
+                        reviewSession: appState.reviewSession,
+                        isAnnotating: appState.isAnnotating
                     )
 
                 HUDOverlay(
@@ -66,6 +75,9 @@ private struct TopBar: View {
     let lutName: String?
     @Binding var lutEnabled: Bool
     @Binding var lutIntensity: Double
+    @Binding var isAnnotating: Bool
+    @Binding var activeTool: AnnotationType
+    let reviewAvailable: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -89,6 +101,21 @@ private struct TopBar: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
+            if reviewAvailable {
+                Toggle("Annotate", isOn: $isAnnotating)
+                    .toggleStyle(.switch)
+                    .font(AppFont.caption)
+                Picker("Tool", selection: $activeTool) {
+                    Text("Pen").tag(AnnotationType.pen)
+                    Text("Rect").tag(AnnotationType.rect)
+                    Text("Circle").tag(AnnotationType.circle)
+                    Text("Arrow").tag(AnnotationType.arrow)
+                    Text("Text").tag(AnnotationType.text)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 320)
+                .disabled(!isAnnotating)
+            }
             Button("LUT…", action: onOpenLUT)
                 .buttonStyle(.bordered)
                 .font(AppFont.body)
@@ -108,6 +135,8 @@ private struct ViewerSurface: View {
     let lutCube: LUTCube?
     let lutEnabled: Bool
     let lutIntensity: Double
+    let reviewSession: ReviewSession?
+    let isAnnotating: Bool
 
     var body: some View {
         ZStack {
@@ -121,12 +150,23 @@ private struct ViewerSurface: View {
                     player: player,
                     lutCube: lutCube,
                     lutEnabled: lutEnabled,
-                    lutIntensity: lutIntensity
+                    lutIntensity: lutIntensity,
+                    reviewSession: reviewSession,
+                    isAnnotating: isAnnotating
                 )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(4)
             } else {
                 PlaceholderView()
+            }
+        }
+        .overlay {
+            if let reviewSession {
+                AnnotationCanvas(
+                    reviewSession: reviewSession,
+                    player: player,
+                    isAnnotating: isAnnotating
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

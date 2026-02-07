@@ -134,7 +134,14 @@ public final class ReviewStore {
 
     public func replaceAnnotations(reviewItemId: String, annotations: [AnnotationRecord]) throws {
         try queue.sync {
-            try execute(sql: "DELETE FROM annotations WHERE review_item_id = '\(reviewItemId)';")
+            let deleteSQL = "DELETE FROM annotations WHERE review_item_id = ?;"
+            let deleteStmt = try prepare(sql: deleteSQL)
+            defer { sqlite3_finalize(deleteStmt) }
+            try bindText(deleteStmt, index: 1, value: reviewItemId)
+            if sqlite3_step(deleteStmt) != SQLITE_DONE {
+                let message = String(cString: sqlite3_errmsg(db))
+                throw ReviewStoreError.executeFailed(message)
+            }
 
             let sql = """
             INSERT INTO annotations (id, review_item_id, type, geometry_json, style_json, start_frame, end_frame, created_at, updated_at)

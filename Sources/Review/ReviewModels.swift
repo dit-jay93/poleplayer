@@ -1,7 +1,7 @@
 import Foundation
 import simd
 
-public struct NormalizedPoint: Codable, Equatable {
+public struct NormalizedPoint: Codable, Equatable, Sendable {
     public let x: Double
     public let y: Double
 
@@ -15,7 +15,7 @@ public struct NormalizedPoint: Codable, Equatable {
     }
 }
 
-public struct NormalizedRect: Codable, Equatable {
+public struct NormalizedRect: Codable, Equatable, Sendable {
     public let x: Double
     public let y: Double
     public let width: Double
@@ -33,7 +33,7 @@ public struct NormalizedRect: Codable, Equatable {
     }
 }
 
-public enum AnnotationType: String, Codable {
+public enum AnnotationType: String, Codable, Sendable {
     case pen
     case rect
     case circle
@@ -61,7 +61,7 @@ public struct AnnotationStyle: Codable, Equatable, Sendable {
     }
 }
 
-public enum AnnotationGeometry: Codable, Equatable {
+public enum AnnotationGeometry: Codable, Equatable, Sendable {
     case pen(points: [NormalizedPoint])
     case rect(bounds: NormalizedRect)
     case circle(bounds: NormalizedRect)
@@ -69,7 +69,7 @@ public enum AnnotationGeometry: Codable, Equatable {
     case text(anchor: NormalizedPoint, text: String)
 }
 
-public struct AnnotationRecord: Codable, Equatable, Identifiable {
+public struct AnnotationRecord: Codable, Equatable, Identifiable, Sendable {
     public let id: String
     public let reviewItemId: String
     public let type: AnnotationType
@@ -103,7 +103,7 @@ public struct AnnotationRecord: Codable, Equatable, Identifiable {
     }
 }
 
-public struct ReviewItemRecord: Codable, Equatable, Identifiable {
+public struct ReviewItemRecord: Codable, Equatable, Identifiable, Sendable {
     public let id: String
     public let assetId: String
     public let title: String
@@ -134,7 +134,7 @@ public struct ReviewItemRecord: Codable, Equatable, Identifiable {
     }
 }
 
-public struct AssetRecord: Codable, Equatable, Identifiable {
+public struct AssetRecord: Codable, Equatable, Identifiable, Sendable {
     public let id: String
     public let url: String
     public let fileHashSHA256: String
@@ -150,7 +150,7 @@ public struct AssetRecord: Codable, Equatable, Identifiable {
     }
 }
 
-public struct ReviewState: Codable, Equatable {
+public struct ReviewState: Codable, Equatable, Sendable {
     public let asset: AssetRecord
     public let reviewItems: [ReviewItemRecord]
     public let annotations: [AnnotationRecord]

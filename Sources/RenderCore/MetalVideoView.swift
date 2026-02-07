@@ -5,22 +5,22 @@ import CoreVideo
 
 public final class MetalVideoView: NSView {
     public typealias FrameProvider = (CFTimeInterval) -> CVPixelBuffer?
-    public typealias HUDProvider = () -> HUDOverlayData?
+    public typealias OverlayProvider = () -> OverlayPayload?
 
     private let mtkView: MTKView
     private let renderer: MetalRenderer?
     private var frameProvider: FrameProvider?
-    private var hudProvider: HUDProvider?
-    private let hudRenderer = HUDOverlayRenderer()
-    private var lastHUDData: HUDOverlayData?
-    private var lastHUDSize: CGSize = .zero
+    private var overlayProvider: OverlayProvider?
+    private let overlayComposer = OverlayComposer()
+    private var lastOverlayPayload: OverlayPayload?
+    private var lastOverlaySize: CGSize = .zero
 
-    public init(frame: NSRect, frameProvider: FrameProvider?, hudProvider: HUDProvider? = nil) {
+    public init(frame: NSRect, frameProvider: FrameProvider?, overlayProvider: OverlayProvider? = nil) {
         let device = MTLCreateSystemDefaultDevice()
         self.mtkView = MTKView(frame: frame, device: device)
         self.renderer = device.flatMap { MetalRenderer(device: $0) }
         self.frameProvider = frameProvider
-        self.hudProvider = hudProvider
+        self.overlayProvider = overlayProvider
 
         super.init(frame: frame)
 
@@ -48,28 +48,28 @@ public final class MetalVideoView: NSView {
         frameProvider = provider
     }
 
-    public func updateHUDProvider(_ provider: HUDProvider?) {
-        hudProvider = provider
+    public func updateOverlayProvider(_ provider: OverlayProvider?) {
+        overlayProvider = provider
     }
 
     public func updateLUT(cube: LUTCube?, intensity: Float, enabled: Bool) {
         renderer?.updateLUT(cube: cube, intensity: intensity, enabled: enabled)
     }
 
-    private func updateHUDIfNeeded(drawableSize: CGSize) {
-        guard let provider = hudProvider else {
+    private func updateOverlayIfNeeded(drawableSize: CGSize) {
+        guard let provider = overlayProvider else {
             renderer?.updateOverlay(image: nil, enabled: false)
             return
         }
-        guard let data = provider() else {
+        guard let payload = provider() else {
             renderer?.updateOverlay(image: nil, enabled: false)
             return
         }
-        if data != lastHUDData || drawableSize != lastHUDSize {
-            let image = hudRenderer.renderImage(size: drawableSize, data: data)
+        if payload != lastOverlayPayload || drawableSize != lastOverlaySize {
+            let image = overlayComposer.renderImage(size: drawableSize, payload: payload)
             renderer?.updateOverlay(image: image, enabled: image != nil)
-            lastHUDData = data
-            lastHUDSize = drawableSize
+            lastOverlayPayload = payload
+            lastOverlaySize = drawableSize
         }
     }
 }
@@ -82,7 +82,7 @@ extension MetalVideoView: MTKViewDelegate {
     public func draw(in view: MTKView) {
         let hostTime = CACurrentMediaTime()
         let pixelBuffer = frameProvider?(hostTime)
-        updateHUDIfNeeded(drawableSize: view.drawableSize)
+        updateOverlayIfNeeded(drawableSize: view.drawableSize)
         renderer?.draw(pixelBuffer: pixelBuffer, in: view)
     }
 }

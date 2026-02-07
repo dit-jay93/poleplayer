@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 import os
 import PlayerCore
 import RenderCore
+import Review
 
 @MainActor
 final class AppState: ObservableObject {
@@ -16,15 +17,26 @@ final class AppState: ObservableObject {
     @Published var lutEnabled: Bool = false
     @Published var lutIntensity: Double = 1.0
     @Published var lutName: String? = nil
+    @Published var isAnnotating: Bool = false
+
+    let reviewSession: ReviewSession?
 
     let playerController = PlayerController()
     private let log = Logger(subsystem: "PolePlayer", category: "AppState")
     private var cancellables: Set<AnyCancellable> = []
+    private let reviewStore: ReviewStore?
 
     private let videoExtensions = ["mov", "mp4", "m4v"]
     private let imageExtensions = ["png", "jpg", "jpeg", "tif", "tiff"]
 
     init() {
+        if let store = AppState.makeReviewStore() {
+            self.reviewStore = store
+            self.reviewSession = ReviewSession(store: store)
+        } else {
+            self.reviewStore = nil
+            self.reviewSession = nil
+        }
         playerController.$lastErrorMessage
             .compactMap { $0 }
             .sink { [weak self] message in
@@ -128,6 +140,7 @@ final class AppState: ObservableObject {
     private func openVideo(url: URL) {
         currentImage = nil
         playerController.openVideo(url: url)
+        startReview(for: url)
         if let error = playerController.lastErrorMessage {
             showError(error)
         }
@@ -139,6 +152,7 @@ final class AppState: ObservableObject {
         playerController.enterPrecisionMode()
         if let image = NSImage(contentsOf: url) {
             currentImage = image
+            startReview(for: url)
             log.info("Opened image: \(url.lastPathComponent, privacy: .public)")
         } else {
             showError("Failed to load image: \(url.lastPathComponent)")
@@ -161,5 +175,33 @@ final class AppState: ObservableObject {
         log.error("UI error: \(message, privacy: .public)")
         errorMessage = message
         isShowingError = true
+    }
+
+    private func startReview(for url: URL) {
+        guard let reviewSession else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let asset = try await ReviewAssetBuilder.build(url: url)
+                reviewSession.loadOrCreate(asset: asset, defaultTitle: url.lastPathComponent, currentFrame: self.playerController.frameIndex)
+            } catch {
+                self.log.error("Review asset hash failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private static func makeReviewStore() -> ReviewStore? {
+        do {
+            let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            let directory = base?.appendingPathComponent("PolePlayer", isDirectory: true)
+            if let directory {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                let dbURL = directory.appendingPathComponent("review.sqlite")
+                return try ReviewStore(databaseURL: dbURL)
+            }
+        } catch {
+            Logger(subsystem: "PolePlayer", category: "AppState").error("ReviewStore init failed: \(error.localizedDescription, privacy: .public)")
+        }
+        return nil
     }
 }
