@@ -88,6 +88,14 @@ final class AppState: ObservableObject {
                 playerController.handleK()
             case "l":
                 playerController.handleL()
+            case "i":
+                playerController.setInPoint()
+            case "o":
+                playerController.setOutPoint()
+            case "u":
+                playerController.clearInOut()
+            case "p":
+                playerController.toggleLooping()
             case ",":
                 playerController.stepBackward()
             case ".":

@@ -9,6 +9,20 @@ public enum PlaybackMode: String {
     case precision = "PRECISION"
 }
 
+public enum PlaybackState: String {
+    case stopped
+    case paused
+    case playing
+}
+
+public enum PrecisionTrigger: String {
+    case none
+    case step
+    case seek
+    case annotate
+    case exportStill
+}
+
 public enum PlayerCoreError: LocalizedError {
     case assetNotPlayable
     case noVideoTrack
@@ -31,6 +45,7 @@ public final class PlayerController: ObservableObject {
     public let player: AVPlayer
 
     @Published public private(set) var mode: PlaybackMode = .realTime
+    @Published public private(set) var state: PlaybackState = .stopped
     @Published public private(set) var isPlaying: Bool = false
     @Published public private(set) var playbackRate: Float = 0
     @Published public private(set) var frameIndex: Int = 0
@@ -49,6 +64,10 @@ public final class PlayerController: ObservableObject {
     @Published public private(set) var debugLastRenderAt: Double = 0
     @Published public private(set) var debugLastPrecisionSource: String = "—"
     @Published public private(set) var debugLastPrecisionAt: Double = 0
+    @Published public private(set) var precisionTrigger: PrecisionTrigger = .none
+    @Published public private(set) var isLooping: Bool = false
+    @Published public private(set) var inPointFrame: Int? = nil
+    @Published public private(set) var outPointFrame: Int? = nil
 
     private let log = Logger(subsystem: "PolePlayer", category: "PlayerCore")
     private var timeObserverToken: Any?
@@ -59,6 +78,7 @@ public final class PlayerController: ObservableObject {
     private var assetReaderSource: AssetReaderFrameSource?
     private var imageGenerator: AVAssetImageGenerator?
     private let imageGenQueue = DispatchQueue(label: "PlayerCore.ImageGenerator")
+    private var loopSeekInFlight: Bool = false
 
     private let preferredTimeScale: CMTimeScale = 600
 
@@ -93,6 +113,7 @@ public final class PlayerController: ObservableObject {
         isPlaying = false
         playbackRate = 0
         mode = .realTime
+        state = .stopped
         lastErrorMessage = nil
         debugVideoFrames = 0
         debugLastFrameAt = 0
@@ -102,6 +123,11 @@ public final class PlayerController: ObservableObject {
         debugLastRenderAt = 0
         debugLastPrecisionSource = "—"
         debugLastPrecisionAt = 0
+        precisionTrigger = .none
+        isLooping = false
+        inPointFrame = nil
+        outPointFrame = nil
+        loopSeekInFlight = false
     }
 
     public func openVideo(url: URL) {
@@ -296,6 +322,7 @@ public final class PlayerController: ObservableObject {
     }
 
     private func updateDerivedState(for time: CMTime) {
+        let previousFrame = frameIndex
         let seconds = time.seconds.isFinite ? time.seconds : 0
         currentTimeSeconds = seconds
 
@@ -306,6 +333,8 @@ public final class PlayerController: ObservableObject {
             frameIndex = 0
             timecode = "00:00:00:00"
         }
+
+        handleLoopIfNeeded(previousFrame: previousFrame)
     }
 
     private func handleError(_ error: Error) {
@@ -316,13 +345,18 @@ public final class PlayerController: ObservableObject {
 
     public func play() {
         stopReverseTimer()
-        mode = .realTime
+        enterRealTimeMode()
+        setState(.playing)
         player.rate = 1.0
         playbackRate = 1.0
-        isPlaying = true
         if FeatureFlags.enableAssetReaderRenderer {
             assetReaderSource?.clearFrozenFrame()
             assetReaderSource?.start()
+        }
+        if let clampedStart = clampedFrameIndex(frameIndex),
+           fps > 0,
+           clampedStart != frameIndex {
+            seek(toFrameIndex: clampedStart, precision: false)
         }
         log.info("Play")
     }
@@ -331,19 +365,34 @@ public final class PlayerController: ObservableObject {
         stopReverseTimer()
         player.rate = 0
         playbackRate = 0
-        isPlaying = false
+        setState(.paused)
         if FeatureFlags.enableAssetReaderRenderer {
             assetReaderSource?.stop()
         }
         log.info("Pause")
     }
 
+    public func stop() {
+        pause()
+        setState(.stopped)
+        if let startFrame = clampedFrameIndex(0), fps > 0 {
+            seek(toFrameIndex: startFrame, precision: false)
+        }
+        log.info("Stop")
+    }
+
     public func togglePlayPause() {
         isPlaying ? pause() : play()
     }
 
-    public func enterPrecisionMode() {
+    public func enterPrecisionMode(trigger: PrecisionTrigger = .none) {
         mode = .precision
+        precisionTrigger = trigger
+    }
+
+    public func enterRealTimeMode() {
+        mode = .realTime
+        precisionTrigger = .none
     }
 
     public func handleJ() {
@@ -387,23 +436,65 @@ public final class PlayerController: ObservableObject {
     }
 
     public func seek(toFrameIndex targetFrame: Int) {
+        seek(toFrameIndex: targetFrame, precision: true)
+    }
+
+    public func setInPoint() {
+        inPointFrame = frameIndex
+        if let outPoint = outPointFrame, outPoint < frameIndex {
+            outPointFrame = frameIndex
+        }
+        log.info("Set In Point: \(self.frameIndex, privacy: .public)")
+    }
+
+    public func setOutPoint() {
+        let candidate = frameIndex
+        if let inPoint = inPointFrame {
+            outPointFrame = max(candidate, inPoint)
+        } else {
+            outPointFrame = candidate
+        }
+        log.info("Set Out Point: \(self.outPointFrame ?? candidate, privacy: .public)")
+    }
+
+    public func clearInOut() {
+        inPointFrame = nil
+        outPointFrame = nil
+        log.info("Clear In/Out")
+    }
+
+    public func toggleLooping() {
+        isLooping.toggle()
+        log.info("Looping: \(self.isLooping ? "ON" : "OFF", privacy: .public)")
+    }
+
+    public func prepareForAnnotation() {
+        enterPrecisionMode(trigger: .annotate)
+    }
+
+    public func prepareForExportStill() {
+        enterPrecisionMode(trigger: .exportStill)
+    }
+
+    private func seek(toFrameIndex targetFrame: Int, precision: Bool, clearLoopFlag: Bool = false) {
         guard fps > 0 else { return }
-        let seconds = Double(targetFrame) / fps
-        seek(toSeconds: seconds, precision: true)
+        let clamped = clampedFrameIndex(targetFrame) ?? targetFrame
+        let seconds = Double(clamped) / fps
+        seek(toSeconds: seconds, precision: precision, clearLoopFlag: clearLoopFlag)
     }
 
     private func stepByFrames(_ delta: Int) {
         guard fps > 0 else { return }
         pause()
-        mode = .precision
+        enterPrecisionMode(trigger: .step)
 
-        let stepSeconds = Double(delta) / fps
-        let targetSeconds = max(0, currentTimeSeconds + stepSeconds)
-        seek(toSeconds: targetSeconds, precision: true)
-        log.info("Step \(delta, privacy: .public) -> \(targetSeconds, privacy: .public)")
+        let stepFrames = frameIndex + delta
+        let clamped = clampedFrameIndex(stepFrames) ?? stepFrames
+        seek(toFrameIndex: clamped, precision: true)
+        log.info("Step \(delta, privacy: .public) -> \(clamped, privacy: .public)")
     }
 
-    private func seek(toSeconds seconds: Double, precision: Bool) {
+    private func seek(toSeconds seconds: Double, precision: Bool, clearLoopFlag: Bool = false) {
         let time = CMTime(seconds: seconds, preferredTimescale: preferredTimeScale)
         let tolerance = precision ? CMTime.zero : CMTime(seconds: 0.05, preferredTimescale: preferredTimeScale)
         player.seek(to: time, toleranceBefore: tolerance, toleranceAfter: tolerance) { [weak self] _ in
@@ -412,9 +503,13 @@ public final class PlayerController: ObservableObject {
                 self.updateDerivedState(for: self.player.currentTime())
                 if FeatureFlags.enablePrecisionImageGenerator && precision {
                     self.assetReaderSource?.stop()
+                    self.enterPrecisionMode(trigger: .seek)
                     self.generateFrozenFrame(atSeconds: seconds)
                 } else if FeatureFlags.enableAssetReaderRenderer {
                     self.assetReaderSource?.restart(atSeconds: seconds)
+                }
+                if clearLoopFlag {
+                    self.loopSeekInFlight = false
                 }
             }
         }
@@ -422,9 +517,9 @@ public final class PlayerController: ObservableObject {
 
     private func startManualReverse() {
         pause()
-        mode = .precision
+        enterPrecisionMode(trigger: .step)
         playbackRate = -1.0
-        isPlaying = true
+        setState(.playing)
 
         stopReverseTimer()
         let interval = 1.0 / max(fps, 24.0)
@@ -438,6 +533,43 @@ public final class PlayerController: ObservableObject {
     private func stopReverseTimer() {
         reverseTimer?.invalidate()
         reverseTimer = nil
+    }
+
+    private func setState(_ newState: PlaybackState) {
+        state = newState
+        isPlaying = newState == .playing
+    }
+
+    private func clampedFrameIndex(_ frame: Int) -> Int? {
+        var result = frame
+        if let inPoint = inPointFrame {
+            result = max(result, inPoint)
+        }
+        if let outPoint = outPointFrame {
+            result = min(result, outPoint)
+        }
+        return result
+    }
+
+    private func handleLoopIfNeeded(previousFrame: Int) {
+        guard state == .playing else { return }
+        guard let outPoint = outPointFrame else { return }
+        guard fps > 0 else { return }
+        if loopSeekInFlight { return }
+
+        let crossedOutPoint = previousFrame < outPoint && frameIndex >= outPoint
+        let atOrPastOutPoint = frameIndex >= outPoint
+
+        if crossedOutPoint || atOrPastOutPoint {
+            if isLooping {
+                let targetFrame = inPointFrame ?? 0
+                loopSeekInFlight = true
+                seek(toFrameIndex: targetFrame, precision: false, clearLoopFlag: true)
+                log.info("Loop -> \(targetFrame, privacy: .public)")
+            } else {
+                pause()
+            }
+        }
     }
 }
 

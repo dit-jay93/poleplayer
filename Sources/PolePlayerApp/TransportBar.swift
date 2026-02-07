@@ -26,7 +26,7 @@ struct TransportBar: View {
             .buttonStyle(.bordered)
 
             Spacer()
-            Text("JKL / ← → / Space")
+            Text("JKL / ← → / Space / I O U P")
                 .font(AppFont.caption)
                 .foregroundStyle(Theme.secondaryText)
         }
