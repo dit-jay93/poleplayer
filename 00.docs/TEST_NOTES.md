@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 16:46 KST
+Updated: 2026-02-07 17:03 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -33,6 +33,8 @@ Updated: 2026-02-07 16:46 KST
    - Toggle LUT on/off (switch in top bar or press T).
    - Adjust intensity slider (0..1).
 10. Repeat for H.264, H.265, and still images.
+11. HUD overlay (RenderCore):
+   - Confirm a minimal HUD (TC/Frame/FPS/Res) appears near the lower-left of the video image.
 
 ## Debug visibility checks (NEW)
 - If video frames are not visible, a **checkerboard debug pattern** should still appear.

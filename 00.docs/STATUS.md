@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 16:46 KST
+Updated: 2026-02-07 17:03 KST
 
 Current phase: 20 — DecodeKit (AVFoundation decoding)
 
@@ -24,12 +24,14 @@ What’s done
 - Unsupported codec detection now surfaces an error message
 - LUT pipeline: .cube parser + Metal 3D LUT upload + intensity blend
 - LUT UI: Open LUT panel + Toggle (T) + intensity slider
+- RenderCore HUD overlay (TC/frame/FPS/res) composited in Metal
+- RenderCore burn-in renderer helper added for export path
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Precision frame accuracy spot-check on ProRes (random frames)
 - Add import drag & drop and basic recent items
-- LUT HUD overlay/burn-in renderer (RenderCore)
+- Wire burn-in renderer into Export flow (future)
 
 Blockers / Risks
 - Audio/video sync may drift (AssetReader frames are timer-driven)

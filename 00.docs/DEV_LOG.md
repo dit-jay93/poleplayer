@@ -78,3 +78,8 @@
 - RenderCore: Added .cube LUT parser + 3D LUT texture upload (RGBA16F) with intensity blending in Metal shader.
 - App: Added LUT open panel, toggle (T), and intensity slider wired to Metal renderer.
 - Tests: Added RenderCore LUT parser tests; `swift test` passes.
+
+## 2026-02-07 17:03 KST
+- RenderCore: Added HUD overlay renderer (timecode/frame/fps/res) as a texture composited in Metal.
+- RenderCore: Added burn-in renderer helper for export path (renders HUD overlay onto a still image).
+- Build hygiene: Fixed accidental `Package.swift` tools header corruption (restored `// swift-tools-version: 6.1`).

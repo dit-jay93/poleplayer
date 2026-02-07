@@ -46,6 +46,10 @@
 - `.cube` 3D LUTs are parsed in RenderCore and uploaded as a 3D texture.
 - LUT is applied in the Metal fragment shader with intensity blending (0..1). No CoreImage path in V1.
 
+### HUD / Burn-in Notes (V1)
+- HUD overlay is generated as a texture in RenderCore and composited in Metal.
+- Burn-in renderer reuses the HUD overlay drawing to stamp onto still images for export.
+
 ---
 
 ## Caching Strategy (V1)
