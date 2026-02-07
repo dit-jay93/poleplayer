@@ -67,3 +67,9 @@
 - PlayerCore: Added timeline state machine (stopped/paused/playing) with in/out points and looping controls; loop seek now clamps to in/out range.
 - PlayerCore: Hybrid mode switching centralized (precision triggers recorded for step/seek/annotate/export).
 - UI: Added I/O/U/P keyboard shortcuts for in/out/clear/loop; transport hint updated.
+
+## 2026-02-07 15:45 KST
+- DecodeKit: Precision path now routed through DecoderPlugin (AVFoundationDecoder) instead of direct AVAssetImageGenerator calls in PlayerCore.
+- DecodeKit: Added fps hinting and prefetch warm-up; precision decode uses frameIndex mapping with zero tolerance.
+- PlayerCore: Added codec subtype validation to surface unsupported streams to UI.
+- Decision: Timecode track parsing deferred; timecode display remains fps-derived (no drop-frame handling yet).

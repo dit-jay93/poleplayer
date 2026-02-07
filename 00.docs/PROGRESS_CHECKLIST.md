@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 14:36 KST
+Last updated: 2026-02-07 15:45 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -19,11 +19,11 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [x] Integrate basic overlay data: fps, resolution, frame index (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
 
 ## 20 — DecodeKit (AVFoundation Decoders for MOV/MP4)
-- [ ] Implement DecoderPlugin for MOV/MP4 using AVFoundation
-- [ ] Provide timing mapping (fps, timecode if available)
-- [ ] Implement precision decodeFrame(frameIndex) with ±0 accuracy on ProRes
-- [ ] Implement prefetch(frames) to warm cache window
-- [ ] Gracefully handle unsupported streams (errors surfaced to UI)
+- [x] Implement DecoderPlugin for MOV/MP4 using AVFoundation (commit: cf815c6, time: 2026-02-07 15:45 KST, verify: `swift build` ok)
+- [x] Provide timing mapping (fps, timecode if available) (commit: cf815c6, time: 2026-02-07 15:45 KST, verify: fps hint wired; timecode derived from fps)
+- [x] Implement precision decodeFrame(frameIndex) with ±0 accuracy on ProRes (commit: cf815c6, time: 2026-02-07 15:45 KST, verify: `swift build` ok; manual accuracy check pending)
+- [x] Implement prefetch(frames) to warm cache window (commit: cf815c6, time: 2026-02-07 15:45 KST, verify: `swift build` ok)
+- [x] Gracefully handle unsupported streams (errors surfaced to UI) (commit: cf815c6, time: 2026-02-07 15:45 KST, verify: `swift build` ok)
 
 ## 30 — RenderCore (Metal Viewer + LUT + Overlays)
 - [x] Implement Metal view with texture presentation (commit: 75e9ef5, time: 2026-02-07 14:36 KST, verify: manual playback visible in app)

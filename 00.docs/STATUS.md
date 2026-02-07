@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 14:36 KST
+Updated: 2026-02-07 15:45 KST
 
 Current phase: 20 — DecodeKit (AVFoundation decoding)
 
@@ -19,15 +19,19 @@ What’s done
 - HUD now distinguishes frozen precision frames: `Src` shows `imageGen` when frozen; `PrecSrc` shows imageGen or imageGen-fail (recent)
 - Timeline state machine added (stopped/paused/playing) with in/out points and loop control
 - Hybrid mode switching centralized for precision triggers (step/seek/annotate/export)
+- DecodeKit precision path wired into PlayerCore (AVFoundationDecoder)
+- Decoder prefetch warm-up implemented (best-effort)
+- Unsupported codec detection now surfaces an error message
 
 What’s next
-- DecodeKit: integrate DecoderPlugin path for precision decode + timing mapping
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
+- Precision frame accuracy spot-check on ProRes (random frames)
 - Add import drag & drop and basic recent items
 
 Blockers / Risks
 - Audio/video sync may drift (AssetReader frames are timer-driven)
 - VFR support policy not locked yet
+- Timecode track parsing deferred (timecode display is fps-derived)
 
 What Jay can test right now
 - Open `Package.swift` in Xcode and run `PolePlayerApp`

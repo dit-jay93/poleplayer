@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 14:36 KST
+Updated: 2026-02-07 15:45 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -60,6 +60,7 @@ Ran AVFoundation probe via a Swift script to validate load + frame extract on cu
 - Frame step advances/rewinds by one frame.
 - HUD updates with frame index/timecode; resolution matches source.
 - Mode pill shows REAL-TIME during play, PRECISION during frame-step.
+- Unsupported codecs surface an error alert instead of silent failure.
 
 ## Known issues / limitations
 - AssetReader video frames are timer-driven; audio/video sync may drift.
