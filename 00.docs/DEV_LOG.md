@@ -50,3 +50,6 @@
 ## 2026-02-07 12:55 KST
 - Debug: Added render tick counters to confirm MTKView draw loop is active even if frames are missing.
 - Fix: Restored valid Swift tools comment in Package.swift (was corrupted to '/ /').
+
+## 2026-02-07 13:18 KST
+- Fix: SwiftUI subviews now observe PlayerController directly (@ObservedObject) so video state changes (hasVideo/mode/debug counters) render immediately. This should unblock Metal viewer display + debug HUD updates.

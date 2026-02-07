@@ -1,7 +1,9 @@
 import SwiftUI
 
+import PlayerCore
+
 struct TransportBar: View {
-    let isPlaying: Bool
+    @ObservedObject var player: PlayerController
     let onPlayPause: () -> Void
     let onStepBack: () -> Void
     let onStepForward: () -> Void
@@ -14,7 +16,7 @@ struct TransportBar: View {
             .buttonStyle(.bordered)
 
             Button(action: onPlayPause) {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
             }
             .buttonStyle(.borderedProminent)
 

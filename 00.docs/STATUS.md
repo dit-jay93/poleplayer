@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 12:55 KST
+Updated: 2026-02-07 13:18 KST
 
 Current phase: 10 — PlayerCore (M0 playback shell in progress)
 
@@ -14,15 +14,16 @@ What’s done
 - Viewer rendering path switched to Metal (MTKView)
 - AssetReader decode path added for Metal rendering (AVAssetReaderTrackOutput → CVPixelBuffer)
 - Debug pattern (checkerboard) + frame counters + render ticks added
+- SwiftUI views now observe PlayerController directly so state changes render
 
 What’s next
-- Re-test GUI video playback after debug pattern + render ticks
+- Re-test GUI video playback after SwiftUI observation fix
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Tighten hybrid mode switching rules + frame-accurate step/seek validation
 - Add import drag & drop and basic recent items
 
 Blockers / Risks
-- Video still not visible previously; need confirmation after debug pattern + render ticks
+- Video still not visible previously; need confirmation after observation fix
 - Audio/video sync may drift (AssetReader frames are timer-driven)
 - Precision path still uses AVPlayer seek with zero tolerance (placeholder until DecodeKit precision path)
 - VFR support policy not locked yet

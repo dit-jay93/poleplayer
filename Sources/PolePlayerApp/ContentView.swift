@@ -19,13 +19,13 @@ struct ContentView: View {
                         image: appState.currentImage
                     )
 
-                    HUDOverlay(
-                        player: appState.playerController,
-                        image: appState.currentImage
-                    )
+                HUDOverlay(
+                    player: appState.playerController,
+                    image: appState.currentImage
+                )
 
-                    ModePill(mode: appState.playerController.mode)
-                }
+                ModePill(player: appState.playerController)
+            }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.viewerBackground)
                 .overlay(KeyCaptureView { event in
@@ -34,7 +34,7 @@ struct ContentView: View {
             }
 
             TransportBar(
-                isPlaying: appState.playerController.isPlaying,
+                player: appState.playerController,
                 onPlayPause: appState.playerController.togglePlayPause,
                 onStepBack: appState.playerController.stepBackward,
                 onStepForward: appState.playerController.stepForward
@@ -75,7 +75,7 @@ private struct TopBar: View {
 }
 
 private struct ViewerSurface: View {
-    let player: PlayerController
+    @ObservedObject var player: PlayerController
     let image: NSImage?
 
     var body: some View {
@@ -111,7 +111,7 @@ private struct PlaceholderView: View {
 }
 
 private struct HUDOverlay: View {
-    let player: PlayerController
+    @ObservedObject var player: PlayerController
     let image: NSImage?
 
     var body: some View {
@@ -187,10 +187,10 @@ private struct HUDRow: View {
 }
 
 private struct ModePill: View {
-    let mode: PlaybackMode
+    @ObservedObject var player: PlayerController
 
     var body: some View {
-        Text(mode.rawValue)
+        Text(player.mode.rawValue)
             .font(AppFont.caption)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
