@@ -12,23 +12,26 @@ struct ContentView: View {
                 onOpen: appState.openPanel
             )
 
-            ZStack {
-                ViewerSurface(
-                    player: appState.playerController,
-                    image: appState.currentImage
-                )
+            GeometryReader { _ in
+                ZStack {
+                    ViewerSurface(
+                        player: appState.playerController,
+                        image: appState.currentImage
+                    )
 
-                HUDOverlay(
-                    player: appState.playerController,
-                    image: appState.currentImage
-                )
+                    HUDOverlay(
+                        player: appState.playerController,
+                        image: appState.currentImage
+                    )
 
-                ModePill(mode: appState.playerController.mode)
+                    ModePill(mode: appState.playerController.mode)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.viewerBackground)
+                .overlay(KeyCaptureView { event in
+                    appState.handleKeyDown(event: event)
+                })
             }
-            .background(Theme.viewerBackground)
-            .overlay(KeyCaptureView { event in
-                appState.handleKeyDown(event: event)
-            })
 
             TransportBar(
                 isPlaying: appState.playerController.isPlaying,

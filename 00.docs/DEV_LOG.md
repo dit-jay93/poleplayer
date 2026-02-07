@@ -24,3 +24,6 @@
 
 ## 2026-02-07 11:41 KST
 - Fix: Force video view to expand to available space to avoid zero-size AVPlayerView (videos appeared blank while audio played).
+
+## 2026-02-07 11:49 KST
+- Fix attempt: Wrap viewer area in GeometryReader to ensure non-zero height for AVPlayerView; aim to resolve “audio-only, no video frames” symptom.
