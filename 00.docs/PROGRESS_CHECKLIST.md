@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 21:28 KST
+Last updated: 2026-02-08 00:43 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -38,6 +38,7 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [x] Bind annotations to single frame or frame range (commit: 70858dd, time: 2026-02-07 21:02 KST, verify: `swift test` ok)
 - [x] Implement DB persistence for review items + annotations (commit: 354b7bf, time: 2026-02-07 20:53 KST, verify: `swift test` ok)
 - [x] On relaunch, restore review state and render overlays on correct frames (commit: 70858dd, time: 2026-02-07 21:02 KST, verify: `swift build` + `swift test` ok; manual restore pending)
+- [x] Annotation editing: select/move/delete + text editing (commit: 8923c82, time: 2026-02-08 00:43 KST, verify: `swift build` + `swift test` ok)
 
 ## 50 — Export Package (Still + notes.json)
 - [x] Implement still capture from current frame (PNG) (commit: f3b9404, time: 2026-02-07 21:20 KST, verify: `swift build` ok)

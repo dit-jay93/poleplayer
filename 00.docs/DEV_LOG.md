@@ -105,3 +105,8 @@
 - Bench: Added PolePlayerBench CLI (step accuracy, random seek, LUT toggle harness) with JSON report output.
 - Bench: CI runs reduced benchmark on generated H.264 clip.
 - Docs: BENCHMARK.md updated with run instructions.
+
+## 2026-02-08 00:43 KST
+- Review/UI: Added selection mode for annotations with move/drag behavior and delete control.
+- Review/UI: Text annotations now editable via top-bar text field.
+- UI: Selection outline rendered in viewer to confirm selected annotation.

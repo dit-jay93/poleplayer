@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 21:28 KST
+Updated: 2026-02-08 00:43 KST
 
 Current phase: 60 — Benchmark Automation (Scripted Tests)
 
@@ -35,12 +35,12 @@ What’s done
 - notes.json includes asset hash + timeline metadata + annotations
 - Bench CLI: step accuracy + random seek + LUT toggle harness with JSON report
 - CI: reduced bench run (auto-generated clip) added
+- Annotation editing: select/move/delete + text edit UI + selection outline
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Precision frame accuracy spot-check on ProRes (random frames)
 - Add import drag & drop and basic recent items
-- Annotation editing (select/move/delete) + text editing
 - Confirm relaunch restore flow with a reference clip
 - Fix keyboard shortcuts (deferred to last per request)
 

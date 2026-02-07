@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 21:28 KST
+Updated: 2026-02-08 00:43 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -41,6 +41,11 @@ Updated: 2026-02-07 21:28 KST
    - Drag to draw; Text places a “Note” at click point.
    - Use I/O to set a range and draw an annotation; it should persist across frames in that range.
    - Quit and relaunch, reopen the same clip, and confirm annotations restore.
+12b. Annotation editing:
+   - Toggle Select on (top bar).
+   - Click an annotation to select (yellow dashed outline).
+   - Drag to move; click Delete to remove.
+   - For text annotations, edit text via the top-bar field.
 13. Export package:
    - Toggle Burn-in on if you want HUD stamped on the still.
    - Click Export… and choose a destination folder.
