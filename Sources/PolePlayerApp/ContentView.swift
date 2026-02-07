@@ -120,6 +120,12 @@ private struct HUDOverlay: View {
             HUDRow(label: "Frame", value: String(player.frameIndex))
             HUDRow(label: "FPS", value: hudFPS)
             HUDRow(label: "Res", value: hudResolution)
+            if player.hasVideo {
+                HUDRow(label: "Src", value: player.debugFrameSource)
+                HUDRow(label: "VFrames", value: String(player.debugVideoFrames))
+                HUDRow(label: "FSize", value: debugFrameSize)
+                HUDRow(label: "LastF", value: debugLastFrame)
+            }
             Spacer()
         }
         .padding(12)
@@ -139,6 +145,16 @@ private struct HUDOverlay: View {
             return "\(Int(player.resolution.width))x\(Int(player.resolution.height))"
         }
         return "—"
+    }
+
+    private var debugFrameSize: String {
+        if player.debugFrameSize == .zero { return "—" }
+        return "\(Int(player.debugFrameSize.width))x\(Int(player.debugFrameSize.height))"
+    }
+
+    private var debugLastFrame: String {
+        if player.debugLastFrameAt == 0 { return "—" }
+        return String(format: "%.2f", player.debugLastFrameAt)
     }
 }
 

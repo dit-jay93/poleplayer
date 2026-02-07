@@ -8,6 +8,7 @@ final class MetalRenderer {
     private let commandQueue: MTLCommandQueue
     private let pipelineState: MTLRenderPipelineState
     private var textureCache: CVMetalTextureCache?
+    private var fallbackTexture: MTLTexture?
 
     init?(device: MTLDevice) {
         self.device = device
@@ -32,6 +33,7 @@ final class MetalRenderer {
         }
 
         CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &textureCache)
+        fallbackTexture = makeFallbackTexture(device: device)
     }
 
     @MainActor
@@ -49,6 +51,9 @@ final class MetalRenderer {
         if let pixelBuffer,
            let texture = makeTexture(from: pixelBuffer) {
             encoder.setFragmentTexture(texture, index: 0)
+            encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        } else if let fallbackTexture {
+            encoder.setFragmentTexture(fallbackTexture, index: 0)
             encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }
 
@@ -78,6 +83,42 @@ final class MetalRenderer {
 
         guard status == kCVReturnSuccess, let cvTexture else { return nil }
         return CVMetalTextureGetTexture(cvTexture)
+    }
+
+    private func makeFallbackTexture(device: MTLDevice) -> MTLTexture? {
+        let size = 64
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: size,
+            height: size,
+            mipmapped: false
+        )
+        descriptor.usage = [.shaderRead]
+
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+
+        var data = [UInt8](repeating: 0, count: size * size * 4)
+        for y in 0..<size {
+            for x in 0..<size {
+                let index = (y * size + x) * 4
+                let isEven = ((x / 8) + (y / 8)) % 2 == 0
+                data[index + 0] = isEven ? 40 : 200   // B
+                data[index + 1] = isEven ? 200 : 40   // G
+                data[index + 2] = 40                  // R
+                data[index + 3] = 255                 // A
+            }
+        }
+
+        data.withUnsafeBytes { bytes in
+            texture.replace(
+                region: MTLRegionMake2D(0, 0, size, size),
+                mipmapLevel: 0,
+                withBytes: bytes.baseAddress!,
+                bytesPerRow: size * 4
+            )
+        }
+
+        return texture
     }
 }
 

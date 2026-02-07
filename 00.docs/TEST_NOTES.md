@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 12:28 KST
+Updated: 2026-02-07 12:41 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -25,6 +25,14 @@ Updated: 2026-02-07 12:28 KST
 7. Verify mode pill switches to PRECISION on frame-step.
 8. Repeat for H.264, H.265, and still images.
 
+## Debug visibility checks (NEW)
+- If video frames are not visible, a **checkerboard debug pattern** should still appear.
+- HUD shows debug counters:
+  - `Src`: frame source (`assetReader` or `videoOutput`)
+  - `VFrames`: number of frames delivered to renderer
+  - `FSize`: pixel buffer size
+  - `LastF`: last frame host timestamp
+
 ## Automated smoke (headless decode)
 Ran AVFoundation probe via a Swift script to validate load + frame extract on current `TestClips`:
 - `IMG_6761.MOV`: playable, fps ~23.999, 2160x3840, duration ~214s, frame0 ok, frame1 ok
@@ -36,6 +44,8 @@ Ran AVFoundation probe via a Swift script to validate load + frame extract on cu
 
 ## Expected results
 - Video frames are visible (Metal viewer).
+- Checkerboard appears if no frames are arriving.
+- Frame counters update when frames arrive.
 - Video plays smoothly for ProRes/H.264/H.265.
 - Frame step advances/rewinds by one frame.
 - HUD updates with frame index/timecode; resolution matches source.

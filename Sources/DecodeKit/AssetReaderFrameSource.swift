@@ -66,10 +66,7 @@ public final class AssetReaderFrameSource {
 
                 if seconds > 0 {
                     let start = CMTime(seconds: seconds, preferredTimescale: 600)
-                    let duration = self.asset.duration.isValid ? CMTimeSubtract(self.asset.duration, start) : .positiveInfinity
-                    if duration.isValid {
-                        reader.timeRange = CMTimeRange(start: start, duration: duration)
-                    }
+                    reader.timeRange = CMTimeRange(start: start, duration: .positiveInfinity)
                 }
 
                 guard reader.canAdd(output) else { return }

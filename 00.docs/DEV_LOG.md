@@ -42,3 +42,7 @@
 ## 2026-02-07 12:28 KST
 - Implemented AssetReader-based decode path (DecodeKit.AssetReaderFrameSource) and wired PlayerCore to use it when Metal rendering is enabled.
 - Real-time frames now come from AVAssetReader on a timer; audio still uses AVPlayer and may drift.
+
+## 2026-02-07 12:41 KST
+- Debug: Added Metal fallback checkerboard pattern when no frame is available and HUD counters for frame source/count/size/last frame timestamp.
+- This is intended to force visibility of the render path even if decode fails.

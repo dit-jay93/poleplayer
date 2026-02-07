@@ -41,6 +41,10 @@ public final class PlayerController: ObservableObject {
     @Published public private(set) var currentTimeSeconds: Double = 0
     @Published public private(set) var hasVideo: Bool = false
     @Published public private(set) var lastErrorMessage: String? = nil
+    @Published public private(set) var debugVideoFrames: Int = 0
+    @Published public private(set) var debugLastFrameAt: Double = 0
+    @Published public private(set) var debugFrameSize: CGSize = .zero
+    @Published public private(set) var debugFrameSource: String = "none"
 
     private let log = Logger(subsystem: "PolePlayer", category: "PlayerCore")
     private var timeObserverToken: Any?
@@ -83,6 +87,10 @@ public final class PlayerController: ObservableObject {
         playbackRate = 0
         mode = .realTime
         lastErrorMessage = nil
+        debugVideoFrames = 0
+        debugLastFrameAt = 0
+        debugFrameSize = .zero
+        debugFrameSource = "none"
     }
 
     public func openVideo(url: URL) {
@@ -146,12 +154,26 @@ public final class PlayerController: ObservableObject {
 
     public func copyPixelBuffer(hostTime: CFTimeInterval) -> CVPixelBuffer? {
         if FeatureFlags.enableAssetReaderRenderer {
-            return assetReaderSource?.currentPixelBuffer()
+            let buffer = assetReaderSource?.currentPixelBuffer()
+            if let buffer {
+                debugVideoFrames += 1
+                debugLastFrameAt = hostTime
+                debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
+                debugFrameSource = "assetReader"
+            }
+            return buffer
         }
         guard let output = videoOutput else { return nil }
         let itemTime = output.itemTime(forHostTime: hostTime)
         if output.hasNewPixelBuffer(forItemTime: itemTime) {
-            return output.copyPixelBuffer(forItemTime: itemTime, itemTimeForDisplay: nil)
+            let buffer = output.copyPixelBuffer(forItemTime: itemTime, itemTimeForDisplay: nil)
+            if let buffer {
+                debugVideoFrames += 1
+                debugLastFrameAt = hostTime
+                debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
+                debugFrameSource = "videoOutput"
+            }
+            return buffer
         }
         return nil
     }
