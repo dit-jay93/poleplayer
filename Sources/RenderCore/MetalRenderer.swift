@@ -8,8 +8,9 @@ final class MetalRenderer {
         var domainMin: SIMD4<Float>
         var domainMax: SIMD4<Float>
         var intensity: Float
-        var enabled: Float
-        var padding: SIMD2<Float> = .zero
+        var lutEnabled: Float
+        var overlayEnabled: Float
+        var padding: Float = 0
     }
 
     private let device: MTLDevice
@@ -19,11 +20,15 @@ final class MetalRenderer {
     private var fallbackTexture: MTLTexture?
     private var lutTexture: MTLTexture?
     private var identityLUT: MTLTexture?
+    private var overlayTexture: MTLTexture?
+    private var overlayTextureSize: CGSize = .zero
+    private var emptyOverlayTexture: MTLTexture?
     private var lutParams = LUTParams(
         domainMin: SIMD4<Float>(0, 0, 0, 0),
         domainMax: SIMD4<Float>(1, 1, 1, 0),
         intensity: 1.0,
-        enabled: 0.0
+        lutEnabled: 0.0,
+        overlayEnabled: 0.0
     )
 
     init?(device: MTLDevice) {
@@ -52,6 +57,7 @@ final class MetalRenderer {
         fallbackTexture = makeFallbackTexture(device: device)
         identityLUT = makeIdentityLUTTexture(device: device, size: 2)
         lutTexture = identityLUT
+        emptyOverlayTexture = makeEmptyOverlayTexture(device: device)
     }
 
     @MainActor
@@ -70,11 +76,13 @@ final class MetalRenderer {
            let texture = makeTexture(from: pixelBuffer) {
             encoder.setFragmentTexture(texture, index: 0)
             encoder.setFragmentTexture(lutTexture ?? identityLUT, index: 1)
+            encoder.setFragmentTexture(overlayTexture ?? emptyOverlayTexture, index: 2)
             encoder.setFragmentBytes(&lutParams, length: MemoryLayout<LUTParams>.stride, index: 0)
             encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         } else if let fallbackTexture {
             encoder.setFragmentTexture(fallbackTexture, index: 0)
             encoder.setFragmentTexture(lutTexture ?? identityLUT, index: 1)
+            encoder.setFragmentTexture(overlayTexture ?? emptyOverlayTexture, index: 2)
             encoder.setFragmentBytes(&lutParams, length: MemoryLayout<LUTParams>.stride, index: 0)
             encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }
@@ -140,6 +148,27 @@ final class MetalRenderer {
             )
         }
 
+        return texture
+    }
+
+    private func makeEmptyOverlayTexture(device: MTLDevice) -> MTLTexture? {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: 1,
+            height: 1,
+            mipmapped: false
+        )
+        descriptor.usage = [.shaderRead]
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        let transparent: [UInt8] = [0, 0, 0, 0]
+        transparent.withUnsafeBytes { bytes in
+            texture.replace(
+                region: MTLRegionMake2D(0, 0, 1, 1),
+                mipmapLevel: 0,
+                withBytes: bytes.baseAddress!,
+                bytesPerRow: 4
+            )
+        }
         return texture
     }
 
@@ -240,14 +269,74 @@ final class MetalRenderer {
             lutTexture = makeLUTTexture(from: cube) ?? identityLUT
             lutParams.domainMin = SIMD4<Float>(cube.domainMin.x, cube.domainMin.y, cube.domainMin.z, 0)
             lutParams.domainMax = SIMD4<Float>(cube.domainMax.x, cube.domainMax.y, cube.domainMax.z, 0)
-            lutParams.enabled = enabled ? 1.0 : 0.0
+            lutParams.lutEnabled = enabled ? 1.0 : 0.0
         } else {
             lutTexture = identityLUT
             lutParams.domainMin = SIMD4<Float>(0, 0, 0, 0)
             lutParams.domainMax = SIMD4<Float>(1, 1, 1, 0)
-            lutParams.enabled = 0.0
+            lutParams.lutEnabled = 0.0
         }
         lutParams.intensity = max(0, min(intensity, 1.0))
+    }
+
+    func updateOverlay(image: CGImage?, enabled: Bool) {
+        lutParams.overlayEnabled = enabled ? 1.0 : 0.0
+        guard enabled, let image else {
+            overlayTexture = nil
+            return
+        }
+
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0 else { return }
+
+        if overlayTexture == nil || overlayTextureSize != CGSize(width: width, height: height) {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm,
+                width: width,
+                height: height,
+                mipmapped: false
+            )
+            descriptor.usage = [.shaderRead]
+            overlayTexture = device.makeTexture(descriptor: descriptor)
+            overlayTextureSize = CGSize(width: width, height: height)
+        }
+
+        guard let overlayTexture else { return }
+
+        let bytesPerRow = width * 4
+        var data = [UInt8](repeating: 0, count: height * bytesPerRow)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo.byteOrder32Little.union(
+            CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)
+        )
+        data.withUnsafeMutableBytes { bytes in
+            if let base = bytes.baseAddress,
+               let context = CGContext(
+                data: base,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: bitmapInfo.rawValue
+               ) {
+                let rect = CGRect(x: 0, y: 0, width: width, height: height)
+                context.clear(rect)
+                context.draw(image, in: rect)
+            }
+        }
+
+        data.withUnsafeBytes { bytes in
+            if let baseAddress = bytes.baseAddress {
+                overlayTexture.replace(
+                    region: MTLRegionMake2D(0, 0, width, height),
+                    mipmapLevel: 0,
+                    withBytes: baseAddress,
+                    bytesPerRow: bytesPerRow
+                )
+            }
+        }
     }
 }
 
@@ -286,31 +375,40 @@ private extension MetalRenderer {
         float4 domainMin;
         float4 domainMax;
         float intensity;
-        float enabled;
-        float2 padding;
+        float lutEnabled;
+        float overlayEnabled;
+        float padding;
     };
 
     fragment float4 fragment_main(
         VertexOut in [[stage_in]],
         texture2d<float> colorTexture [[texture(0)]],
         texture3d<float> lutTexture [[texture(1)]],
+        texture2d<float> overlayTexture [[texture(2)]],
         constant LUTParams& params [[buffer(0)]]
     ) {
         constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
         float4 color = colorTexture.sample(textureSampler, in.texCoord);
-        if (params.enabled < 0.5) {
-            return color;
+        float3 outputColor = color.rgb;
+        if (params.lutEnabled >= 0.5) {
+            float3 domainMin = params.domainMin.xyz;
+            float3 domainMax = params.domainMax.xyz;
+            float3 denom = max(domainMax - domainMin, float3(1e-6));
+            float3 normalized = clamp((color.rgb - domainMin) / denom, 0.0, 1.0);
+
+            constexpr sampler lutSampler (mag_filter::linear, min_filter::linear, address::clamp_to_edge);
+            float3 lutColor = lutTexture.sample(lutSampler, normalized).rgb;
+            outputColor = mix(color.rgb, lutColor, params.intensity);
         }
 
-        float3 domainMin = params.domainMin.xyz;
-        float3 domainMax = params.domainMax.xyz;
-        float3 denom = max(domainMax - domainMin, float3(1e-6));
-        float3 normalized = clamp((color.rgb - domainMin) / denom, 0.0, 1.0);
+        float4 output = float4(outputColor, color.a);
+        if (params.overlayEnabled >= 0.5) {
+            constexpr sampler overlaySampler (mag_filter::linear, min_filter::linear);
+            float4 overlay = overlayTexture.sample(overlaySampler, in.texCoord);
+            output = mix(output, overlay, overlay.a);
+        }
 
-        constexpr sampler lutSampler (mag_filter::linear, min_filter::linear, address::clamp_to_edge);
-        float3 lutColor = lutTexture.sample(lutSampler, normalized).rgb;
-        float3 mixed = mix(color.rgb, lutColor, params.intensity);
-        return float4(mixed, color.a);
+        return output;
     }
     """
 }

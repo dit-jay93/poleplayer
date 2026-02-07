@@ -9,12 +9,20 @@ struct MetalVideoContainer: NSViewRepresentable {
     let lutIntensity: Double
 
     func makeNSView(context: Context) -> MetalVideoView {
-        let view = MetalVideoView(frame: .zero) { hostTime in
+        let view = MetalVideoView(frame: .zero, frameProvider: { hostTime in
             Task { @MainActor in
                 player.recordRenderTick(hostTime: hostTime)
             }
             return player.copyPixelBuffer(hostTime: hostTime)
-        }
+        }, hudProvider: {
+            guard player.hasVideo else { return nil }
+            return HUDOverlayData(
+                timecode: player.timecode,
+                frameIndex: player.frameIndex,
+                fps: player.fps,
+                resolution: player.resolution
+            )
+        })
         view.updateLUT(cube: lutCube, intensity: Float(lutIntensity), enabled: lutEnabled)
         return view
     }
@@ -25,6 +33,15 @@ struct MetalVideoContainer: NSViewRepresentable {
                 player.recordRenderTick(hostTime: hostTime)
             }
             return player.copyPixelBuffer(hostTime: hostTime)
+        }
+        nsView.updateHUDProvider {
+            guard player.hasVideo else { return nil }
+            return HUDOverlayData(
+                timecode: player.timecode,
+                frameIndex: player.frameIndex,
+                fps: player.fps,
+                resolution: player.resolution
+            )
         }
         nsView.updateLUT(cube: lutCube, intensity: Float(lutIntensity), enabled: lutEnabled)
     }
