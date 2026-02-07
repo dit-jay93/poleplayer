@@ -62,3 +62,8 @@
 
 ## 2026-02-07 14:00 KST
 - Debug: Differentiated frozen imageGen frames vs assetReader in HUD (`Src` now shows `imageGen` when frozen). Added precision failure indicator (`imageGen-fail`) to confirm imageGen attempts even if frame creation fails.
+
+## 2026-02-07 14:36 KST
+- PlayerCore: Added timeline state machine (stopped/paused/playing) with in/out points and looping controls; loop seek now clamps to in/out range.
+- PlayerCore: Hybrid mode switching centralized (precision triggers recorded for step/seek/annotate/export).
+- UI: Added I/O/U/P keyboard shortcuts for in/out/clear/loop; transport hint updated.

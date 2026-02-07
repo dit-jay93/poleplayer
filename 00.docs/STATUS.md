@@ -1,8 +1,8 @@
 # STATUS
 
-Updated: 2026-02-07 14:00 KST
+Updated: 2026-02-07 14:36 KST
 
-Current phase: 10 — PlayerCore (M0 playback shell in progress)
+Current phase: 20 — DecodeKit (AVFoundation decoding)
 
 What’s done
 - Swift Package scaffold with modular targets (PlayerCore/DecodeKit/RenderCore/Review/Library/Export)
@@ -17,11 +17,12 @@ What’s done
 - SwiftUI views now observe PlayerController directly so state changes render
 - Precision path uses AVAssetImageGenerator to render frozen frame on seek/step
 - HUD now distinguishes frozen precision frames: `Src` shows `imageGen` when frozen; `PrecSrc` shows imageGen or imageGen-fail (recent)
+- Timeline state machine added (stopped/paused/playing) with in/out points and loop control
+- Hybrid mode switching centralized for precision triggers (step/seek/annotate/export)
 
 What’s next
-- Re-test precision frame step/seek with imageGen path
+- DecodeKit: integrate DecoderPlugin path for precision decode + timing mapping
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
-- Tighten hybrid mode switching rules + frame-accurate step/seek validation
 - Add import drag & drop and basic recent items
 
 Blockers / Risks
@@ -33,5 +34,6 @@ What Jay can test right now
 - Use Open… to load clips in `PolePlayer/TestClips`
 - J/K/L for reverse/pause/forward, Space to play/pause
 - Left/Right arrow or ,/. for frame step
+- I = set In point, O = set Out point, U = clear In/Out, P = toggle Loop
 - Verify HUD (TC/frame/FPS/res) + debug counters (Src/VFrames/FSize/LastF/RTicks/LastR)
 - Confirm checkerboard appears if no frames are arriving

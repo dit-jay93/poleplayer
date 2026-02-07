@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 14:00 KST
+Updated: 2026-02-07 14:36 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -21,9 +21,14 @@ Updated: 2026-02-07 14:00 KST
    - K = pause
    - L = play forward (press L again to increase rate)
 5. Use Left/Right arrow (or ,/.) to frame-step.
-6. Verify HUD shows timecode, frame index, FPS, resolution.
-7. Verify mode pill switches to PRECISION on frame-step.
-8. Repeat for H.264, H.265, and still images.
+6. In/Out + Loop:
+   - I = set In point at current frame
+   - O = set Out point at current frame
+   - U = clear In/Out
+   - P = toggle Loop on/off
+7. Verify HUD shows timecode, frame index, FPS, resolution.
+8. Verify mode pill switches to PRECISION on frame-step.
+9. Repeat for H.264, H.265, and still images.
 
 ## Debug visibility checks (NEW)
 - If video frames are not visible, a **checkerboard debug pattern** should still appear.

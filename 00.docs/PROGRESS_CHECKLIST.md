@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 02:14 KST
+Last updated: 2026-02-07 14:36 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -12,9 +12,9 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [x] Add feature flags system (simple) (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
 
 ## 10 — PlayerCore (Timeline, Modes, Controls)
-- [ ] Implement timeline state machine: play/pause/stop/loop/in-out
+- [x] Implement timeline state machine: play/pause/stop/loop/in-out (commit: cf24593, time: 2026-02-07 14:36 KST, verify: `swift build` ok)
 - [x] Implement keyboard controls: JKL, frame step, seek-to-frame (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok; manual playback pending)
-- [ ] Implement hybrid mode switching rules (auto precision triggers)
+- [x] Implement hybrid mode switching rules (auto precision triggers) (commit: cf24593, time: 2026-02-07 14:36 KST, verify: `swift build` ok)
 - [x] Expose playback observables for UI (timecode/frame index) (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
 - [x] Integrate basic overlay data: fps, resolution, frame index (commit: dfa4a39, time: 2026-02-07 02:14 KST, verify: build ok)
 
@@ -26,7 +26,7 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 - [ ] Gracefully handle unsupported streams (errors surfaced to UI)
 
 ## 30 — RenderCore (Metal Viewer + LUT + Overlays)
-- [ ] Implement Metal view with texture presentation
+- [x] Implement Metal view with texture presentation (commit: 75e9ef5, time: 2026-02-07 14:36 KST, verify: manual playback visible in app)
 - [ ] Implement LUT loader for .cube (parse + upload 3D texture)
 - [ ] Apply LUT with intensity parameter
 - [ ] Implement HUD overlay layer for timecode/frame index/FPS
