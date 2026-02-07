@@ -1,5 +1,6 @@
 @preconcurrency import AVFoundation
 import Combine
+import CoreMedia
 import Foundation
 import os
 import DecodeKit
@@ -76,9 +77,10 @@ public final class PlayerController: ObservableObject {
     private var asset: AVAsset?
     private var videoOutput: AVPlayerItemVideoOutput?
     private var assetReaderSource: AssetReaderFrameSource?
-    private var imageGenerator: AVAssetImageGenerator?
+    private var precisionDecoder: DecoderPlugin?
     private let imageGenQueue = DispatchQueue(label: "PlayerCore.ImageGenerator")
     private var loopSeekInFlight: Bool = false
+    private var timecodeStartFrames: Int = 0
 
     private let preferredTimeScale: CMTimeScale = 600
 
@@ -100,7 +102,7 @@ public final class PlayerController: ObservableObject {
         videoOutput = nil
         assetReaderSource?.stop()
         assetReaderSource = nil
-        imageGenerator = nil
+        precisionDecoder = nil
         timeObserverToken = nil
         endObserver = nil
         hasVideo = false
@@ -128,6 +130,7 @@ public final class PlayerController: ObservableObject {
         inPointFrame = nil
         outPointFrame = nil
         loopSeekInFlight = false
+        timecodeStartFrames = 0
     }
 
     public func openVideo(url: URL) {
@@ -157,6 +160,9 @@ public final class PlayerController: ObservableObject {
             let nominalFPS = try await track.load(.nominalFrameRate)
             fps = nominalFPS > 0 ? Double(nominalFPS) : 30.0
 
+            let isSupported = await validateVideoTrack(track)
+            guard isSupported else { return }
+
             let naturalSize = try await track.load(.naturalSize)
             let preferredTransform = try await track.load(.preferredTransform)
             let transformed = naturalSize.applying(preferredTransform)
@@ -180,12 +186,21 @@ public final class PlayerController: ObservableObject {
                 assetReaderSource = AssetReaderFrameSource(asset: asset, track: track, fps: fps)
             }
             if FeatureFlags.enablePrecisionImageGenerator {
-                let generator = AVAssetImageGenerator(asset: asset)
-                generator.appliesPreferredTrackTransform = true
-                generator.requestedTimeToleranceBefore = .zero
-                generator.requestedTimeToleranceAfter = .zero
-                imageGenerator = generator
+                if let urlAsset = asset as? AVURLAsset {
+                    let descriptor = AssetDescriptor(url: urlAsset.url)
+                    if AVFoundationDecoder.canOpen(descriptor) {
+                        do {
+                            let decoder = try AVFoundationDecoder(asset: descriptor)
+                            decoder.setFPSHint(fps)
+                            precisionDecoder = decoder
+                        } catch {
+                            handleError(error)
+                        }
+                    }
+                }
             }
+
+            timecodeStartFrames = 0
 
             attachTimeObserver()
             attachEndObserver(item: item)
@@ -223,30 +238,37 @@ public final class PlayerController: ObservableObject {
         return nil
     }
 
-    private func generateFrozenFrame(atSeconds seconds: Double) {
-        guard let imageGenerator else { return }
-        let time = CMTime(seconds: seconds, preferredTimescale: preferredTimeScale)
+    private func generateFrozenFrame(atFrameIndex frameIndex: Int) {
+        guard let precisionDecoder else { return }
         imageGenQueue.async { [weak self] in
             guard let self else { return }
-            var actualTime = CMTime.zero
             do {
-                let cgImage = try imageGenerator.copyCGImage(at: time, actualTime: &actualTime)
+                let request = FrameRequest(frameIndex: frameIndex, priority: 1, allowApproximate: false)
+                let decoded = try precisionDecoder.decodeFrame(request)
                 Task { @MainActor in
-                    let buffer = self.makePixelBuffer(from: cgImage)
-                    self.assetReaderSource?.setFrozenFrame(buffer)
-                    self.debugLastPrecisionSource = "imageGen"
-                    self.debugLastPrecisionAt = CACurrentMediaTime()
-                    if let buffer {
+                    switch decoded {
+                    case .cgImage(let cgImage):
+                        let buffer = self.makePixelBuffer(from: cgImage)
+                        self.assetReaderSource?.setFrozenFrame(buffer)
+                        self.debugLastPrecisionSource = "imageGen"
+                        if let buffer {
+                            self.debugVideoFrames += 1
+                            self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
+                        }
+                    case .pixelBuffer(let buffer):
+                        self.assetReaderSource?.setFrozenFrame(buffer)
+                        self.debugLastPrecisionSource = "decodeBuffer"
                         self.debugVideoFrames += 1
                         self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
                     }
+                    self.debugLastPrecisionAt = CACurrentMediaTime()
                 }
             } catch {
                 Task { @MainActor in
                     self.debugLastPrecisionSource = "imageGen-fail"
                     self.debugLastPrecisionAt = CACurrentMediaTime()
                 }
-                self.log.error("ImageGen failed: \(error.localizedDescription, privacy: .public)")
+                self.log.error("Precision decode failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -328,7 +350,8 @@ public final class PlayerController: ObservableObject {
 
         if fps > 0 {
             frameIndex = max(0, Int(round(seconds * fps)))
-            timecode = TimecodeFormatter.timecodeString(frameIndex: frameIndex, fps: fps)
+            let timecodeFrames = frameIndex + timecodeStartFrames
+            timecode = TimecodeFormatter.timecodeString(frameIndex: timecodeFrames, fps: fps)
         } else {
             frameIndex = 0
             timecode = "00:00:00:00"
@@ -501,10 +524,13 @@ public final class PlayerController: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.updateDerivedState(for: self.player.currentTime())
-                if FeatureFlags.enablePrecisionImageGenerator && precision {
-                    self.assetReaderSource?.stop()
+                if precision {
                     self.enterPrecisionMode(trigger: .seek)
-                    self.generateFrozenFrame(atSeconds: seconds)
+                }
+                if FeatureFlags.enablePrecisionImageGenerator && precision, self.precisionDecoder != nil {
+                    self.assetReaderSource?.stop()
+                    let targetFrame = Int(round(seconds * max(self.fps, 1.0)))
+                    self.generateFrozenFrame(atFrameIndex: targetFrame)
                 } else if FeatureFlags.enableAssetReaderRenderer {
                     self.assetReaderSource?.restart(atSeconds: seconds)
                 }
@@ -571,6 +597,47 @@ public final class PlayerController: ObservableObject {
             }
         }
     }
+
+    private func validateVideoTrack(_ track: AVAssetTrack) async -> Bool {
+        do {
+            let descriptions = try await track.load(.formatDescriptions)
+            guard let format = descriptions.first else { return true }
+            let subtype = CMFormatDescriptionGetMediaSubType(format)
+            if supportedCodecSubtypes.contains(subtype) {
+                return true
+            }
+            handleError(PlayerCoreError.failedToLoad("Unsupported codec: \(fourCCString(subtype))"))
+            return false
+        } catch {
+            handleError(error)
+            return false
+        }
+    }
+
+    private func fourCCString(_ code: FourCharCode) -> String {
+        let bytes: [UInt8] = [
+            UInt8((code >> 24) & 0xFF),
+            UInt8((code >> 16) & 0xFF),
+            UInt8((code >> 8) & 0xFF),
+            UInt8(code & 0xFF)
+        ]
+        return String(bytes: bytes, encoding: .macOSRoman) ?? String(format: "0x%08X", code)
+    }
+
+    private var supportedCodecSubtypes: Set<FourCharCode> {
+        [
+            kCMVideoCodecType_H264,
+            kCMVideoCodecType_HEVC,
+            kCMVideoCodecType_HEVCWithAlpha,
+            kCMVideoCodecType_AppleProRes422,
+            kCMVideoCodecType_AppleProRes422HQ,
+            kCMVideoCodecType_AppleProRes422LT,
+            kCMVideoCodecType_AppleProRes422Proxy,
+            kCMVideoCodecType_AppleProRes4444,
+            kCMVideoCodecType_AppleProRes4444XQ
+        ]
+    }
+
 }
 
 public enum FeatureFlags {
@@ -591,5 +658,16 @@ public enum TimecodeFormatter {
         let minutes = totalMinutes % 60
         let hours = totalMinutes / 60
         return String(format: "%02d:%02d:%02d:%02d", hours, minutes, seconds, frames)
+    }
+
+    public static func frames(from timecode: String, fps: Double) -> Int? {
+        let parts = timecode.split(separator: ":")
+        guard parts.count == 4 else { return nil }
+        guard let hours = Int(parts[0]),
+              let minutes = Int(parts[1]),
+              let seconds = Int(parts[2]),
+              let frames = Int(parts[3]) else { return nil }
+        let fpsInt = max(1, Int(round(fps)))
+        return (((hours * 60 + minutes) * 60 + seconds) * fpsInt) + frames
     }
 }

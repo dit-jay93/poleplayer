@@ -64,6 +64,7 @@ public final class AVFoundationDecoder: DecoderPlugin, @unchecked Sendable {
     private let asset: AVURLAsset
     private let imageGenerator: AVAssetImageGenerator
     private var fps: Double = 30.0
+    private var fpsHint: Double? = nil
 
     public static func canOpen(_ asset: AssetDescriptor) -> Bool {
         let ext = asset.url.pathExtension.lowercased()
@@ -94,12 +95,17 @@ public final class AVFoundationDecoder: DecoderPlugin, @unchecked Sendable {
         }
     }
 
+    public func setFPSHint(_ fps: Double) {
+        fpsHint = fps > 0 ? fps : nil
+    }
+
     public func prepare() {
         // AVFoundation prepares lazily; no-op for now.
     }
 
     public func decodeFrame(_ request: FrameRequest) throws -> DecodedFrame {
-        let seconds = Double(request.frameIndex) / max(fps, 1.0)
+        let effectiveFPS = fpsHint ?? fps
+        let seconds = Double(request.frameIndex) / max(effectiveFPS, 1.0)
         let time = CMTime(seconds: seconds, preferredTimescale: 600)
         var actualTime = CMTime.zero
         let image = try imageGenerator.copyCGImage(at: time, actualTime: &actualTime)
@@ -107,8 +113,17 @@ public final class AVFoundationDecoder: DecoderPlugin, @unchecked Sendable {
     }
 
     public func prefetch(frames: [Int]) {
-        // Placeholder for future cache warming.
-        _ = frames
+        let effectiveFPS = fpsHint ?? fps
+        let clamped = frames.prefix(16)
+        let times: [NSValue] = clamped.map { index in
+            let seconds = Double(index) / max(effectiveFPS, 1.0)
+            let time = CMTime(seconds: seconds, preferredTimescale: 600)
+            return NSValue(time: time)
+        }
+        guard !times.isEmpty else { return }
+        imageGenerator.generateCGImagesAsynchronously(forTimes: times) { _, _, _, _, _ in
+            // Warm cache; ignore results for now.
+        }
     }
 
     public func close() {
