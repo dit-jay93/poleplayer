@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 15:45 KST
+Updated: 2026-02-07 16:46 KST
 
 Current phase: 20 — DecodeKit (AVFoundation decoding)
 
@@ -22,11 +22,14 @@ What’s done
 - DecodeKit precision path wired into PlayerCore (AVFoundationDecoder)
 - Decoder prefetch warm-up implemented (best-effort)
 - Unsupported codec detection now surfaces an error message
+- LUT pipeline: .cube parser + Metal 3D LUT upload + intensity blend
+- LUT UI: Open LUT panel + Toggle (T) + intensity slider
 
 What’s next
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Precision frame accuracy spot-check on ProRes (random frames)
 - Add import drag & drop and basic recent items
+- LUT HUD overlay/burn-in renderer (RenderCore)
 
 Blockers / Risks
 - Audio/video sync may drift (AssetReader frames are timer-driven)

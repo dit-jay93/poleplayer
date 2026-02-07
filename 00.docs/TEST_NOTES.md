@@ -1,6 +1,6 @@
 # TEST_NOTES
 
-Updated: 2026-02-07 15:45 KST
+Updated: 2026-02-07 16:46 KST
 
 ## How to run
 1. Open `Package.swift` in Xcode.
@@ -28,7 +28,11 @@ Updated: 2026-02-07 15:45 KST
    - P = toggle Loop on/off
 7. Verify HUD shows timecode, frame index, FPS, resolution.
 8. Verify mode pill switches to PRECISION on frame-step.
-9. Repeat for H.264, H.265, and still images.
+9. LUT:
+   - Click “LUT…” and select a `.cube` file.
+   - Toggle LUT on/off (switch in top bar or press T).
+   - Adjust intensity slider (0..1).
+10. Repeat for H.264, H.265, and still images.
 
 ## Debug visibility checks (NEW)
 - If video frames are not visible, a **checkerboard debug pattern** should still appear.

@@ -42,6 +42,10 @@
    - review annotations (vector paths)
 3) Final composited texture presented in viewer.
 
+### LUT Notes (V1)
+- `.cube` 3D LUTs are parsed in RenderCore and uploaded as a 3D texture.
+- LUT is applied in the Metal fragment shader with intensity blending (0..1). No CoreImage path in V1.
+
 ---
 
 ## Caching Strategy (V1)

@@ -73,3 +73,8 @@
 - DecodeKit: Added fps hinting and prefetch warm-up; precision decode uses frameIndex mapping with zero tolerance.
 - PlayerCore: Added codec subtype validation to surface unsupported streams to UI.
 - Decision: Timecode track parsing deferred; timecode display remains fps-derived (no drop-frame handling yet).
+
+## 2026-02-07 16:46 KST
+- RenderCore: Added .cube LUT parser + 3D LUT texture upload (RGBA16F) with intensity blending in Metal shader.
+- App: Added LUT open panel, toggle (T), and intensity slider wired to Metal renderer.
+- Tests: Added RenderCore LUT parser tests; `swift test` passes.

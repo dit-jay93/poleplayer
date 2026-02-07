@@ -1,6 +1,6 @@
 # PROGRESS_CHECKLIST
 
-Last updated: 2026-02-07 15:45 KST
+Last updated: 2026-02-07 16:46 KST
 
 Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <Asia/Seoul>, verify: <note>)".
 
@@ -27,8 +27,8 @@ Rule: When an item is completed, mark [x] and append "(commit: <hash>, time: <As
 
 ## 30 — RenderCore (Metal Viewer + LUT + Overlays)
 - [x] Implement Metal view with texture presentation (commit: 75e9ef5, time: 2026-02-07 14:36 KST, verify: manual playback visible in app)
-- [ ] Implement LUT loader for .cube (parse + upload 3D texture)
-- [ ] Apply LUT with intensity parameter
+- [x] Implement LUT loader for .cube (parse + upload 3D texture) (commit: 26ebc26, time: 2026-02-07 16:46 KST, verify: `swift build` ok; LUT parser tests added)
+- [x] Apply LUT with intensity parameter (commit: 26ebc26, time: 2026-02-07 16:46 KST, verify: `swift test` ok)
 - [ ] Implement HUD overlay layer for timecode/frame index/FPS
 - [ ] Implement burn-in renderer for export path
 
