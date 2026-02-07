@@ -14,6 +14,7 @@ public final class AssetReaderFrameSource {
     private var output: AVAssetReaderTrackOutput?
     private var timer: DispatchSourceTimer?
     private var currentBuffer: CVPixelBuffer?
+    private var frozenBuffer: CVPixelBuffer?
 
     public init(asset: AVAsset, track: AVAssetTrack, fps: Double) {
         self.asset = asset
@@ -47,14 +48,27 @@ public final class AssetReaderFrameSource {
         }
         lock.lock()
         currentBuffer = nil
+        frozenBuffer = nil
         lock.unlock()
     }
 
     public func currentPixelBuffer() -> CVPixelBuffer? {
         lock.lock()
-        let buffer = currentBuffer
+        let buffer = frozenBuffer ?? currentBuffer
         lock.unlock()
         return buffer
+    }
+
+    public func setFrozenFrame(_ buffer: CVPixelBuffer?) {
+        lock.lock()
+        frozenBuffer = buffer
+        lock.unlock()
+    }
+
+    public func clearFrozenFrame() {
+        lock.lock()
+        frozenBuffer = nil
+        lock.unlock()
     }
 
     private func start(atSeconds seconds: Double) {

@@ -56,3 +56,6 @@
 
 ## 2026-02-07 13:32 KST
 - Fix: FontRegistrar now searches both Bundle.module and Bundle.main for Pretendard fonts; logs bundle resource paths to diagnose missing font resources.
+
+## 2026-02-07 13:45 KST
+- Precision: Added AVAssetImageGenerator path to produce frozen frames on precision seek/step (imageGen -> CVPixelBuffer -> Metal).

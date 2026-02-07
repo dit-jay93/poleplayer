@@ -55,6 +55,8 @@ public final class PlayerController: ObservableObject {
     private var asset: AVAsset?
     private var videoOutput: AVPlayerItemVideoOutput?
     private var assetReaderSource: AssetReaderFrameSource?
+    private var imageGenerator: AVAssetImageGenerator?
+    private let imageGenQueue = DispatchQueue(label: "PlayerCore.ImageGenerator")
 
     private let preferredTimeScale: CMTimeScale = 600
 
@@ -76,6 +78,7 @@ public final class PlayerController: ObservableObject {
         videoOutput = nil
         assetReaderSource?.stop()
         assetReaderSource = nil
+        imageGenerator = nil
         timeObserverToken = nil
         endObserver = nil
         hasVideo = false
@@ -146,6 +149,13 @@ public final class PlayerController: ObservableObject {
             if FeatureFlags.enableAssetReaderRenderer {
                 assetReaderSource = AssetReaderFrameSource(asset: asset, track: track, fps: fps)
             }
+            if FeatureFlags.enablePrecisionImageGenerator {
+                let generator = AVAssetImageGenerator(asset: asset)
+                generator.appliesPreferredTrackTransform = true
+                generator.requestedTimeToleranceBefore = .zero
+                generator.requestedTimeToleranceAfter = .zero
+                imageGenerator = generator
+            }
 
             attachTimeObserver()
             attachEndObserver(item: item)
@@ -180,6 +190,62 @@ public final class PlayerController: ObservableObject {
             return buffer
         }
         return nil
+    }
+
+    private func generateFrozenFrame(atSeconds seconds: Double) {
+        guard let imageGenerator else { return }
+        let time = CMTime(seconds: seconds, preferredTimescale: preferredTimeScale)
+        imageGenQueue.async { [weak self] in
+            guard let self else { return }
+            var actualTime = CMTime.zero
+            guard let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: &actualTime) else { return }
+            Task { @MainActor in
+                let buffer = self.makePixelBuffer(from: cgImage)
+                self.assetReaderSource?.setFrozenFrame(buffer)
+                if let buffer {
+                    self.debugVideoFrames += 1
+                    self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
+                    self.debugFrameSource = "imageGen"
+                }
+            }
+        }
+    }
+
+    private func makePixelBuffer(from image: CGImage) -> CVPixelBuffer? {
+        let width = image.width
+        let height = image.height
+
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+
+        var pixelBuffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &pixelBuffer
+        )
+        guard status == kCVReturnSuccess, let pixelBuffer else { return nil }
+
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        guard let context = CGContext(
+            data: CVPixelBufferGetBaseAddress(pixelBuffer),
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else { return nil }
+
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return pixelBuffer
     }
 
     public func recordRenderTick(hostTime: CFTimeInterval) {
@@ -241,6 +307,7 @@ public final class PlayerController: ObservableObject {
         playbackRate = 1.0
         isPlaying = true
         if FeatureFlags.enableAssetReaderRenderer {
+            assetReaderSource?.clearFrozenFrame()
             assetReaderSource?.start()
         }
         log.info("Play")
@@ -329,7 +396,10 @@ public final class PlayerController: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.updateDerivedState(for: self.player.currentTime())
-                if FeatureFlags.enableAssetReaderRenderer {
+                if FeatureFlags.enablePrecisionImageGenerator && precision {
+                    self.assetReaderSource?.stop()
+                    self.generateFrozenFrame(atSeconds: seconds)
+                } else if FeatureFlags.enableAssetReaderRenderer {
                     self.assetReaderSource?.restart(atSeconds: seconds)
                 }
             }
@@ -360,6 +430,7 @@ public final class PlayerController: ObservableObject {
 public enum FeatureFlags {
     public static let enableManualReversePlayback = true
     public static let enableAssetReaderRenderer = true
+    public static let enablePrecisionImageGenerator = true
 }
 
 public enum TimecodeFormatter {
