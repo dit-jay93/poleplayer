@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-07 11:49 KST
+Updated: 2026-02-07 12:12 KST
 
 Current phase: 10 — PlayerCore (M0 playback shell in progress)
 
@@ -11,16 +11,16 @@ What’s done
 - Pretendard fonts bundled + registered on launch
 - CI workflow added (build + test)
 - Headless AVFoundation smoke decode on TestClips (load + frame extract OK)
-- Fix attempt: viewer now uses GeometryReader to ensure AVPlayerView gets height
+- Viewer rendering path switched to Metal (AVPlayerItemVideoOutput → CVPixelBuffer → MTKView)
 
 What’s next
-- Re-test GUI video playback after latest layout fix
+- Re-test GUI video playback after Metal viewer switch
 - Manual GUI playback validation (ProRes/H.264/H.265 + still images)
 - Tighten hybrid mode switching rules + frame-accurate step/seek validation
 - Add import drag & drop and basic recent items
 
 Blockers / Risks
-- Audio-only playback still reported (needs re-test after latest layout fix)
+- Audio-only playback was reported on AVPlayerView; should be resolved by Metal path (needs confirmation)
 - Precision path still uses AVPlayer seek with zero tolerance (placeholder until DecodeKit precision path)
 - VFR support policy not locked yet
 
@@ -30,3 +30,4 @@ What Jay can test right now
 - J/K/L for reverse/pause/forward, Space to play/pause
 - Left/Right arrow or ,/. for frame step
 - Verify HUD (TC/frame/FPS/res) + mode pill updates
+- Confirm video frames are visible with Metal viewer

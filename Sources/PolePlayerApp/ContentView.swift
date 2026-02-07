@@ -86,7 +86,7 @@ private struct ViewerSurface: View {
                     .scaledToFit()
                     .padding(12)
             } else if player.hasVideo {
-                VideoPlayerContainer(player: player.player)
+                MetalVideoContainer(player: player)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(4)
             } else {

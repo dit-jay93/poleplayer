@@ -33,3 +33,8 @@
 
 ## 2026-02-07 12:12 KST
 - Fix: removed actor-isolated deinit cleanup in PlayerController to avoid Swift 6.1 CI error (isolated deinit requires experimental flag). Cleanup remains in explicit `clear()` path.
+
+## 2026-02-07 12:12 KST
+- Plan execution: switched viewer rendering to Metal (MTKView + CVPixelBuffer -> MTLTexture) to bypass AVPlayerView blank video issue.
+- Added AVPlayerItemVideoOutput in PlayerCore to pull BGRA pixel buffers for Metal display.
+- Metal shader is embedded as a source string in RenderCore to avoid SwiftPM .metal handling issues.

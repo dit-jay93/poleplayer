@@ -46,6 +46,7 @@ public final class PlayerController: ObservableObject {
     private var endObserver: NSObjectProtocol?
     private var reverseTimer: Timer?
     private var asset: AVAsset?
+    private var videoOutput: AVPlayerItemVideoOutput?
 
     private let preferredTimeScale: CMTimeScale = 600
 
@@ -64,6 +65,7 @@ public final class PlayerController: ObservableObject {
         }
         player.replaceCurrentItem(with: nil)
         asset = nil
+        videoOutput = nil
         timeObserverToken = nil
         endObserver = nil
         hasVideo = false
@@ -116,6 +118,12 @@ public final class PlayerController: ObservableObject {
             durationFrames = durationSeconds.isFinite ? Int(round(durationSeconds * fps)) : 0
 
             let item = AVPlayerItem(asset: asset)
+            let outputSettings: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            ]
+            let output = AVPlayerItemVideoOutput(pixelBufferAttributes: outputSettings)
+            item.add(output)
+            videoOutput = output
             player.replaceCurrentItem(with: item)
             hasVideo = true
 
@@ -126,6 +134,15 @@ public final class PlayerController: ObservableObject {
         } catch {
             handleError(error)
         }
+    }
+
+    public func copyPixelBuffer(hostTime: CFTimeInterval) -> CVPixelBuffer? {
+        guard let output = videoOutput else { return nil }
+        let itemTime = output.itemTime(forHostTime: hostTime)
+        if output.hasNewPixelBuffer(forItemTime: itemTime) {
+            return output.copyPixelBuffer(forItemTime: itemTime, itemTimeForDisplay: nil)
+        }
+        return nil
     }
 
     private func attachTimeObserver() {
