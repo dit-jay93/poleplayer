@@ -1,8 +1,8 @@
 # STATUS
 
-Updated: 2026-02-22 KST (Phase 96 — Timeline & Scope improvements)
+Updated: 2026-02-22 KST (Phase 97 — Named Marker System)
 
-Current phase: 96 — Timeline & Scope Improvements (complete)
+Current phase: 97 — Named Marker System (complete)
 
 What's done
 - Swift Package scaffold with modular targets (PlayerCore/DecodeKit/RenderCore/Review/Library/Export)
@@ -76,6 +76,13 @@ What's done
   · 스코프 비동기화: Task.detached(priority: .utility) + SendablePixelBuffer(@unchecked Sendable) 래퍼 → render thread 블로킹 해소; 결과를 MainActor.run + [weak self]로 전달
   · 재생 속도 HUD: isPlaying && playbackRate != 1.0 조건 시 HUD에 "Speed Nx" / "-1x" 행 표시 (정상 속도에서는 숨김)
   · I/O 마커 드래그: TimelineScrubber DragGesture 시작 시 hitMarker(10pt 반경) 판정 → 마커 드래그 시 setInPoint(Int)/setOutPoint(Int) 호출; 드래그 중 Ø10pt 원형 핸들 오버레이 표시; PlayerController에 setInPoint/setOutPoint frame 오버로드 추가
+- Phase 97 — Named 마커 시스템:
+  · TimelineMarker: `public struct TimelineMarker: Identifiable, Equatable { id: UUID, frame: Int, label: String }`; PlayerController에 `@Published markers: [TimelineMarker]`, clear() 시 removeAll()
+  · Marker CRUD: addMarker(label:) / removeMarker(id:) / clearMarkers() / moveMarker(id:toFrame:) / goToNextMarker() / goToPreviousMarker()
+  · 키바인딩: `` ` `` = 현재 프레임에 마커 추가, `[` = 이전 마커, `]` = 다음 마커 (Cmd+[/] 플레이리스트와 충돌 없음)
+  · TimelineScrubber: MarkerTarget → TimelineDragTarget(.inPoint/.outPoint/.marker(UUID)); 노란 다이아몬드(◆ 8pt) 시각화; 마커 드래그 이동; MarkerDiamond Shape; handleFrac/handleColor 헬퍼로 ViewBuilder 호환
+  · InspectorPanel: import PlayerCore 추가; markers/onSeekToMarker/onRemoveMarker/onClearMarkers 파라미터; MarkersSection — 목록(다이아몬드 아이콘 + 프레임/라벨 + X 버튼) + Clear All; Export 섹션 직전에 삽입
+  · WaveformPanel: 그라티큘 루프에 IRE 퍼센트 라벨 (0/25/50/75/100) 추가 (7pt monospaced, opacity 0.35)
 
 QA 수정 (complete)
 - [x] 재생 버그: audioMeter.attach가 replaceCurrentItem 전에 await → 비블로킹 Task로 변경, clear()에 detach 추가
@@ -94,10 +101,11 @@ V2 Features (complete)
 - [x] E: 오디오 미터 — MTAudioProcessingTap + vDSP_measqv, L/R RMS + 피크홀드, AudioMeterView (TransportBar 내)
 - [x] F: 전체화면 모드 — NSWindow.toggleFullScreen, 툴바 버튼
 
-What's next (Phase 97 candidates)
-- 어노테이션 export: PDF 번들 / 프레임별 CSV 내보내기
-- 타임코드 트랙 파싱 (CMTimeCode track → 정확한 SMPTE TC 표시)
+What's next (Phase 98 candidates)
+- 마커 라벨 편집: InspectorPanel 또는 타임라인 더블클릭으로 인라인 TextField 편집
+- 마커 export: notes.json에 markers 배열 포함 / CSV 내보내기
 - 오디오 파형 타임라인 오버레이
+- 타임코드 트랙 파싱 (CMTimeCode track → 정확한 SMPTE TC 표시)
 - Review 세션 간 비교 (두 리뷰 어노테이션 diff)
 
 Validation
@@ -136,3 +144,7 @@ What Jay can test right now
 - I = set In point, O = set Out point → 마커를 타임라인에서 드래그해 위치 조정 가능 (±10pt hit radius)
 - JKL 2x/4x 재생 중 HUD 좌상단에 "Speed 2x" / "Speed 4x" 표시; J 역방향 시 "Speed -1x"; 1x 정상 속도에서는 숨김
 - H = QC 스코프 → 스코프 계산이 백그라운드 Task로 분리되어 4K 재생 중 render thread 블로킹 없음
+- 백틱(`` ` ``) = 현재 프레임에 Named 마커 추가; `[` / `]` = 이전/다음 마커로 이동
+- 타임라인 노란 다이아몬드(◆)를 드래그해 마커 위치 이동
+- Inspector 패널 "Markers" 섹션에서 마커 목록 확인, 클릭으로 시크, X로 개별 삭제, Clear All로 전체 삭제
+- H = Waveform 스코프 → 0/25/50/75/100 IRE 라벨 표시
