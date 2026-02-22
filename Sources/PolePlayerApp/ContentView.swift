@@ -557,6 +557,11 @@ private struct HUDOverlay: View {
             if player.hasVideo {
                 HUDRow(label: "Src",    value: player.debugFrameSource)
                 HUDRow(label: "PrecSrc", value: precisionSource)
+                if player.isPlaying && player.playbackRate != 1.0 {
+                    HUDRow(label: "Speed",
+                           value: player.playbackRate == -1.0 ? "-1x"
+                                  : String(format: "%.0fx", player.playbackRate))
+                }
                 if player.hdrMode != "SDR" {
                     Button {
                         autoToneMap.toggle()

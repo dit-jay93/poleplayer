@@ -346,23 +346,32 @@ extension MetalVideoView: MTKViewDelegate {
         renderer?.updateFalseColor(enabled: falseColorEnabled)
         renderer?.draw(pixelBuffer: pixelBuffer ?? lastPixelBuffer, in: view)
 
-        // Scopes: 새 프레임이 있을 때만, 최대 ~10 fps
-        // (서브샘플링으로 4K에서도 5ms 이하 유지)
+        // Scopes: 새 프레임이 있을 때만, 최대 ~10 fps — Task.detached로 render thread 블로킹 방지
         if let buf = pixelBuffer,
            (onHistogram != nil || onWaveform != nil || onVectorscope != nil),
            hostTime - lastScopeTime > 0.1 {
             lastScopeTime = hostTime
-            if let cb = onHistogram, let data = HistogramComputer.compute(from: buf) {
-                cb(data)
-            }
-            if let cb = onWaveform, let data = WaveformComputer.compute(from: buf) {
-                cb(data)
-            }
-            if let cb = onVectorscope, let data = VectorscopeComputer.compute(from: buf) {
-                cb(data)
+            let (hasH, hasW, hasV) = (onHistogram != nil, onWaveform != nil, onVectorscope != nil)
+            let sendable = SendablePixelBuffer(buffer: buf)
+            Task.detached(priority: .utility) { [weak self] in
+                let hist: HistogramData?   = hasH ? HistogramComputer.compute(from: sendable.buffer) : nil
+                let wave: WaveformData?    = hasW ? WaveformComputer.compute(from: sendable.buffer)  : nil
+                let vecs: VectorscopeData? = hasV ? VectorscopeComputer.compute(from: sendable.buffer) : nil
+                await MainActor.run { [weak self] in
+                    if let d = hist { self?.onHistogram?(d) }
+                    if let d = wave { self?.onWaveform?(d) }
+                    if let d = vecs { self?.onVectorscope?(d) }
+                }
             }
         }
     }
+}
+
+// MARK: - Sendable Helpers
+
+/// CVPixelBuffer는 retain 기반 참조 타입으로 read-only 공유가 안전 — @unchecked Sendable 마킹
+private struct SendablePixelBuffer: @unchecked Sendable {
+    let buffer: CVPixelBuffer
 }
 
 // MARK: - Event Capture

@@ -632,6 +632,14 @@ public final class PlayerController: ObservableObject {
         log.info("Set In Point: \(self.frameIndex, privacy: .public)")
     }
 
+    public func setInPoint(_ frame: Int) {
+        inPointFrame = frame
+        if let outPoint = outPointFrame, outPoint < frame {
+            outPointFrame = frame
+        }
+        log.info("Set In Point (drag): \(frame, privacy: .public)")
+    }
+
     public func setOutPoint() {
         let candidate = frameIndex
         if let inPoint = inPointFrame {
@@ -640,6 +648,15 @@ public final class PlayerController: ObservableObject {
             outPointFrame = candidate
         }
         log.info("Set Out Point: \(self.outPointFrame ?? candidate, privacy: .public)")
+    }
+
+    public func setOutPoint(_ frame: Int) {
+        if let inPoint = inPointFrame {
+            outPointFrame = max(frame, inPoint)
+        } else {
+            outPointFrame = frame
+        }
+        log.info("Set Out Point (drag): \(self.outPointFrame ?? frame, privacy: .public)")
     }
 
     public func clearInOut() {

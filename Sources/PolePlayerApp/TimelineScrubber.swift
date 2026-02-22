@@ -5,8 +5,11 @@ import SwiftUI
 struct TimelineScrubber: View {
     @ObservedObject var player: PlayerController
 
-    @State private var isDragging  = false
-    @State private var isHovering  = false
+    @State private var isDragging    = false
+    @State private var isHovering    = false
+    @State private var draggingMarker: MarkerTarget? = nil
+
+    private enum MarkerTarget { case inPoint, outPoint }
 
     private let trackH: CGFloat = 3
     private let totalH: CGFloat = 28
@@ -64,7 +67,7 @@ struct TimelineScrubber: View {
 
                     // ── 플레이헤드 ──────────────────────────────────────────
                     if player.hasVideo {
-                        let dia: CGFloat = isDragging ? 14 : (isHovering ? 12 : 10)
+                        let dia: CGFloat = (isDragging && draggingMarker == nil) ? 14 : (isHovering ? 12 : 10)
                         Circle()
                             .fill(Color.white)
                             .frame(width: dia, height: dia)
@@ -74,20 +77,43 @@ struct TimelineScrubber: View {
                             .animation(.spring(response: 0.18, dampingFraction: 0.75), value: isDragging)
                             .animation(.spring(response: 0.18, dampingFraction: 0.75), value: isHovering)
                     }
+
+                    // ── 드래그 중 마커 핸들 ─────────────────────────────────
+                    if let target = draggingMarker {
+                        let frac = target == .inPoint ? inF : ouF
+                        if let f = frac {
+                            Circle()
+                                .fill(target == .inPoint ? Color.accentColor : Color(red: 1, green: 0.5, blue: 0.2))
+                                .frame(width: 10, height: 10)
+                                .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
+                                .offset(x: f * w - 5)
+                                .frame(maxHeight: .infinity)
+                        }
+                    }
                 }
                 .contentShape(Rectangle())
                 .onHover { isHovering = $0 }
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { val in
+                            if draggingMarker == nil && !isDragging {
+                                draggingMarker = hitMarker(x: val.startLocation.x, width: w)
+                            }
                             isDragging = true
                             let frame = frameAt(x: val.location.x, width: w)
-                            player.scrubToFrame(frame)
+                            switch draggingMarker {
+                            case .inPoint:  player.setInPoint(frame)
+                            case .outPoint: player.setOutPoint(frame)
+                            case nil:       player.scrubToFrame(frame)
+                            }
                         }
                         .onEnded { val in
-                            isDragging = false
                             let frame = frameAt(x: val.location.x, width: w)
-                            player.seek(toFrameIndex: frame)   // 드래그 끝에 정밀 시크
+                            if draggingMarker == nil {
+                                player.seek(toFrameIndex: frame)   // 드래그 끝에 정밀 시크
+                            }
+                            isDragging = false
+                            draggingMarker = nil
                         }
                 )
             }
@@ -115,6 +141,14 @@ struct TimelineScrubber: View {
     private func frameAt(x: CGFloat, width: CGFloat) -> Int {
         let frac = max(0, min(1, x / width))
         return Int(frac * Double(player.durationFrames))
+    }
+
+    /// 주어진 x 위치에 I/O 마커가 있으면 해당 타겟 반환 (hitRadius = 10pt)
+    private func hitMarker(x: CGFloat, width: CGFloat) -> MarkerTarget? {
+        let hitRadius: CGFloat = 10
+        if let f = inFraction,  abs(x - f * width) < hitRadius { return .inPoint }
+        if let f = outFraction, abs(x - f * width) < hitRadius { return .outPoint }
+        return nil
     }
 }
 
