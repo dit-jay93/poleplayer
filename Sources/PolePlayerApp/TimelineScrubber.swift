@@ -5,11 +5,15 @@ import SwiftUI
 struct TimelineScrubber: View {
     @ObservedObject var player: PlayerController
 
-    @State private var isDragging    = false
-    @State private var isHovering    = false
-    @State private var draggingMarker: MarkerTarget? = nil
+    @State private var isDragging  = false
+    @State private var isHovering  = false
+    @State private var dragTarget: TimelineDragTarget? = nil
 
-    private enum MarkerTarget { case inPoint, outPoint }
+    private enum TimelineDragTarget {
+        case inPoint
+        case outPoint
+        case marker(UUID)
+    }
 
     private let trackH: CGFloat = 3
     private let totalH: CGFloat = 28
@@ -65,9 +69,21 @@ struct TimelineScrubber: View {
                             .offset(x: o * w)
                     }
 
+                    // ── Named Markers ────────────────────────────────────────
+                    if player.durationFrames > 0 {
+                        ForEach(player.markers) { marker in
+                            let frac = Double(marker.frame) / Double(player.durationFrames)
+                            MarkerDiamond()
+                                .fill(Color.yellow)
+                                .frame(width: 8, height: 8)
+                                .offset(x: frac * w - 4)
+                                .frame(maxHeight: .infinity)
+                        }
+                    }
+
                     // ── 플레이헤드 ──────────────────────────────────────────
                     if player.hasVideo {
-                        let dia: CGFloat = (isDragging && draggingMarker == nil) ? 14 : (isHovering ? 12 : 10)
+                        let dia: CGFloat = (isDragging && dragTarget == nil) ? 14 : (isHovering ? 12 : 10)
                         Circle()
                             .fill(Color.white)
                             .frame(width: dia, height: dia)
@@ -79,16 +95,14 @@ struct TimelineScrubber: View {
                     }
 
                     // ── 드래그 중 마커 핸들 ─────────────────────────────────
-                    if let target = draggingMarker {
-                        let frac = target == .inPoint ? inF : ouF
-                        if let f = frac {
-                            Circle()
-                                .fill(target == .inPoint ? Color.accentColor : Color(red: 1, green: 0.5, blue: 0.2))
-                                .frame(width: 10, height: 10)
-                                .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
-                                .offset(x: f * w - 5)
-                                .frame(maxHeight: .infinity)
-                        }
+                    if let target = dragTarget,
+                       let f = handleFrac(for: target, width: w) {
+                        Circle()
+                            .fill(handleColor(for: target))
+                            .frame(width: 10, height: 10)
+                            .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
+                            .offset(x: f * w - 5)
+                            .frame(maxHeight: .infinity)
                     }
                 }
                 .contentShape(Rectangle())
@@ -96,24 +110,25 @@ struct TimelineScrubber: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { val in
-                            if draggingMarker == nil && !isDragging {
-                                draggingMarker = hitMarker(x: val.startLocation.x, width: w)
+                            if dragTarget == nil && !isDragging {
+                                dragTarget = hitDragTarget(x: val.startLocation.x, width: w)
                             }
                             isDragging = true
                             let frame = frameAt(x: val.location.x, width: w)
-                            switch draggingMarker {
-                            case .inPoint:  player.setInPoint(frame)
-                            case .outPoint: player.setOutPoint(frame)
-                            case nil:       player.scrubToFrame(frame)
+                            switch dragTarget {
+                            case .inPoint:          player.setInPoint(frame)
+                            case .outPoint:         player.setOutPoint(frame)
+                            case .marker(let id):   player.moveMarker(id: id, toFrame: frame)
+                            case nil:               player.scrubToFrame(frame)
                             }
                         }
                         .onEnded { val in
                             let frame = frameAt(x: val.location.x, width: w)
-                            if draggingMarker == nil {
+                            if dragTarget == nil {
                                 player.seek(toFrameIndex: frame)   // 드래그 끝에 정밀 시크
                             }
                             isDragging = false
-                            draggingMarker = nil
+                            dragTarget = nil
                         }
                 )
             }
@@ -143,11 +158,36 @@ struct TimelineScrubber: View {
         return Int(frac * Double(player.durationFrames))
     }
 
-    /// 주어진 x 위치에 I/O 마커가 있으면 해당 타겟 반환 (hitRadius = 10pt)
-    private func hitMarker(x: CGFloat, width: CGFloat) -> MarkerTarget? {
+    private func handleFrac(for target: TimelineDragTarget, width: CGFloat) -> Double? {
+        switch target {
+        case .inPoint:  return inFraction
+        case .outPoint: return outFraction
+        case .marker(let id):
+            guard let m = player.markers.first(where: { $0.id == id }),
+                  player.durationFrames > 0 else { return nil }
+            return Double(m.frame) / Double(player.durationFrames)
+        }
+    }
+
+    private func handleColor(for target: TimelineDragTarget) -> Color {
+        switch target {
+        case .inPoint:  return .accentColor
+        case .outPoint: return Color(red: 1, green: 0.5, blue: 0.2)
+        case .marker:   return .yellow
+        }
+    }
+
+    /// 주어진 x 위치에 드래그 타겟이 있으면 반환 (hitRadius = 10pt)
+    /// I/O 마커 → Named 마커 순으로 우선순위 적용
+    private func hitDragTarget(x: CGFloat, width: CGFloat) -> TimelineDragTarget? {
         let hitRadius: CGFloat = 10
         if let f = inFraction,  abs(x - f * width) < hitRadius { return .inPoint }
         if let f = outFraction, abs(x - f * width) < hitRadius { return .outPoint }
+        guard player.durationFrames > 0 else { return nil }
+        for marker in player.markers {
+            let f = Double(marker.frame) / Double(player.durationFrames)
+            if abs(x - f * width) < hitRadius { return .marker(marker.id) }
+        }
         return nil
     }
 }
@@ -190,6 +230,18 @@ private struct Triangle: Shape {
             p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
             p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
         }
+        p.closeSubpath()
+        return p
+    }
+}
+
+private struct MarkerDiamond: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to:    CGPoint(x: rect.midX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.midY))
         p.closeSubpath()
         return p
     }

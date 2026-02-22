@@ -18,12 +18,20 @@ struct WaveformPanel: View {
 
             // Graticule lines at 0 / 25 / 50 / 75 / 100 % luma
             let levels: [Double] = [0, 0.25, 0.5, 0.75, 1.0]
-            for level in levels {
+            let ireLabels = ["0", "25", "50", "75", "100"]
+            for (level, label) in zip(levels, ireLabels) {
                 let y = size.height * (1.0 - level)   // 1.0 = white = top
                 var path = Path()
                 path.move(to: CGPoint(x: 0, y: y))
                 path.addLine(to: CGPoint(x: size.width, y: y))
                 ctx.stroke(path, with: .color(Color.white.opacity(0.15)), lineWidth: 0.5)
+                ctx.draw(
+                    Text(label)
+                        .font(.system(size: 7, design: .monospaced))
+                        .foregroundColor(Color.white.opacity(0.35)),
+                    at: CGPoint(x: 8, y: max(5, y - 5)),
+                    anchor: .center
+                )
             }
 
             // Waveform bitmap

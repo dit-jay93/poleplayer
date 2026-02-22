@@ -1,4 +1,5 @@
 import DecodeKit
+import PlayerCore
 import Review
 import SwiftUI
 
@@ -21,6 +22,11 @@ struct InspectorPanel: View {
     // EXR (Phase 90)
     let exrInfo: EXRInfo?
     @Binding var exrChannelMode: EXRChannelMode
+    // Phase 97: Markers
+    let markers: [TimelineMarker]
+    let onSeekToMarker: (Int) -> Void
+    let onRemoveMarker: (UUID) -> Void
+    let onClearMarkers: () -> Void
 
     var body: some View {
         ScrollView {
@@ -58,6 +64,17 @@ struct InspectorPanel: View {
                 // ── Notes ──────────────────────────────────────────────
                 if let session = reviewSession {
                     NotesSection(session: session)
+                    InspectorDivider()
+                }
+
+                // ── Markers (Phase 97) ─────────────────────────────────
+                if !markers.isEmpty {
+                    MarkersSection(
+                        markers: markers,
+                        onSeekToMarker: onSeekToMarker,
+                        onRemoveMarker: onRemoveMarker,
+                        onClearMarkers: onClearMarkers
+                    )
                     InspectorDivider()
                 }
 
@@ -530,6 +547,56 @@ private struct EXRModeButtonStyle: ButtonStyle {
                     .stroke(isActive ? Color.accentColor.opacity(0.4) : Color.clear, lineWidth: 1)
             )
             .opacity(configuration.isPressed ? 0.7 : 1.0)
+    }
+}
+
+// MARK: - Markers Section (Phase 97)
+
+private struct MarkersSection: View {
+    let markers: [TimelineMarker]
+    let onSeekToMarker: (Int) -> Void
+    let onRemoveMarker: (UUID) -> Void
+    let onClearMarkers: () -> Void
+
+    var body: some View {
+        InspectorSection(label: "Markers") {
+            ForEach(markers) { marker in
+                HStack(spacing: 6) {
+                    Button {
+                        onSeekToMarker(marker.frame)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "diamond.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(Color.yellow)
+                            Text(marker.label.isEmpty ? "Frame \(marker.frame)" : marker.label)
+                                .font(AppFont.caption)
+                                .foregroundStyle(Theme.primaryText)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    Spacer(minLength: 0)
+                    Button {
+                        onRemoveMarker(marker.id)
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Theme.secondaryText.opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if !markers.isEmpty {
+                Button("Clear All", action: onClearMarkers)
+                    .buttonStyle(.plain)
+                    .font(AppFont.caption)
+                    .foregroundStyle(Color(red: 1, green: 0.35, blue: 0.35))
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        }
     }
 }
 

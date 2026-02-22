@@ -367,6 +367,9 @@ final class AppState: ObservableObject {
                     } else if comparePixelBuffer != nil {
                         compareEnabled = true
                     }
+                case "`": activeController.addMarker()
+                case "[": activeController.goToPreviousMarker()
+                case "]": activeController.goToNextMarker()
                 default: break
                 }
             }

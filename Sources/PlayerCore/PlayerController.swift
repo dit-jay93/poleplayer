@@ -54,6 +54,18 @@ private enum CaptureError: LocalizedError {
     }
 }
 
+public struct TimelineMarker: Identifiable, Equatable {
+    public let id: UUID
+    public var frame: Int
+    public var label: String
+
+    public init(frame: Int, label: String = "") {
+        self.id = UUID()
+        self.frame = frame
+        self.label = label
+    }
+}
+
 @MainActor
 public final class PlayerController: ObservableObject {
     public let player: AVPlayer
@@ -90,6 +102,7 @@ public final class PlayerController: ObservableObject {
     }
     @Published public private(set) var hdrMode: String = "SDR"
     @Published public private(set) var thumbnails: [CGImage] = []
+    @Published public private(set) var markers: [TimelineMarker] = []
 
     public let audioMeter = AudioMeterMonitor()
     private var thumbnailTask: Task<Void, Never>?
@@ -165,6 +178,7 @@ public final class PlayerController: ObservableObject {
         thumbnailTask?.cancel()
         thumbnailTask = nil
         thumbnails = []
+        markers.removeAll()
         statusObservation?.invalidate()
         statusObservation = nil
         frameCache.clear()
@@ -779,6 +793,47 @@ public final class PlayerController: ObservableObject {
             result = min(result, outPoint)
         }
         return result
+    }
+
+    // MARK: - Marker CRUD
+
+    public func addMarker(label: String = "") {
+        let marker = TimelineMarker(frame: frameIndex, label: label)
+        markers.append(marker)
+        markers.sort { $0.frame < $1.frame }
+        log.info("Marker added at frame \(self.frameIndex, privacy: .public)")
+    }
+
+    public func removeMarker(id: UUID) {
+        markers.removeAll { $0.id == id }
+    }
+
+    public func clearMarkers() {
+        markers.removeAll()
+    }
+
+    public func moveMarker(id: UUID, toFrame frame: Int) {
+        guard let idx = markers.firstIndex(where: { $0.id == id }) else { return }
+        markers[idx].frame = max(0, min(durationFrames > 0 ? durationFrames - 1 : 0, frame))
+        markers.sort { $0.frame < $1.frame }
+    }
+
+    public func goToNextMarker() {
+        guard !markers.isEmpty, fps > 0 else { return }
+        if let next = markers.first(where: { $0.frame > frameIndex }) {
+            seek(toFrameIndex: next.frame)
+        } else {
+            seek(toFrameIndex: markers[0].frame)
+        }
+    }
+
+    public func goToPreviousMarker() {
+        guard !markers.isEmpty, fps > 0 else { return }
+        if let prev = markers.last(where: { $0.frame < frameIndex }) {
+            seek(toFrameIndex: prev.frame)
+        } else {
+            seek(toFrameIndex: markers[markers.count - 1].frame)
+        }
     }
 
     private func generateThumbnails(count: Int) {

@@ -137,7 +137,11 @@ struct ContentView: View {
                         onExportPDF:        appState.exportPDFReportPanel,
                         currentMetadata:    appState.currentMetadata,
                         exrInfo:            appState.exrInfo,
-                        exrChannelMode:     $appState.exrChannelMode
+                        exrChannelMode:     $appState.exrChannelMode,
+                        markers:            appState.activeController.markers,
+                        onSeekToMarker:     { appState.activeController.seek(toFrameIndex: $0) },
+                        onRemoveMarker:     { appState.activeController.removeMarker(id: $0) },
+                        onClearMarkers:     { appState.activeController.clearMarkers() }
                     )
                     .frame(width: 260)
                 }
