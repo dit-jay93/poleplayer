@@ -211,7 +211,7 @@ private extension Data {
         guard offset + 3 < count else { return 0 }
         var raw: UInt32 = 0
         Swift.withUnsafeMutableBytes(of: &raw) { (ptr: UnsafeMutableRawBufferPointer) in
-            self[offset..<(offset + 4)].copyBytes(to: ptr)
+            _ = self[offset..<(offset + 4)].copyBytes(to: ptr)
         }
         // Mac is little-endian; if file is big-endian, byte-swap
         return bigEndian ? raw.byteSwapped : raw
@@ -221,7 +221,7 @@ private extension Data {
         guard offset + 1 < count else { return 0 }
         var raw: UInt16 = 0
         Swift.withUnsafeMutableBytes(of: &raw) { (ptr: UnsafeMutableRawBufferPointer) in
-            self[offset..<(offset + 2)].copyBytes(to: ptr)
+            _ = self[offset..<(offset + 2)].copyBytes(to: ptr)
         }
         return bigEndian ? raw.byteSwapped : raw
     }

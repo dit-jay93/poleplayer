@@ -204,7 +204,10 @@ public final class MetalVideoView: NSView {
 
     private func notifyTransformUpdate() {
         let (scale, offset) = computeTransform(drawableSize: mtkView.drawableSize)
-        onTransformUpdate?(scale, offset)
+        // 다음 런루프로 미뤄 SwiftUI 렌더 사이클 중 objectWillChange.send() 호출 방지
+        DispatchQueue.main.async { [weak self] in
+            self?.onTransformUpdate?(scale, offset)
+        }
     }
 
     // MARK: - Pixel Sampler

@@ -2,7 +2,8 @@ import AVFoundation
 import CoreVideo
 import Foundation
 
-public final class AssetReaderFrameSource {
+// NSLock + DispatchQueue 로 직접 스레드 안전성 보장 → @unchecked Sendable
+public final class AssetReaderFrameSource: @unchecked Sendable {
     private let asset: AVAsset
     private let track: AVAssetTrack
     private let fps: Double
