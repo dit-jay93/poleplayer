@@ -468,7 +468,28 @@ public final class PlayerController: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.pause()
+                guard let self else { return }
+                if self.isLooping && self.outPointFrame == nil {
+                    // 전체 파일 루프: in-point(또는 0프레임)으로 seek 후 재생
+                    let targetSeconds = Double(self.inPointFrame ?? 0) / max(self.fps, 1.0)
+                    let time = CMTime(seconds: targetSeconds, preferredTimescale: self.preferredTimeScale)
+                    self.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+                        Task { @MainActor in
+                            guard let self else { return }
+                            self.player.play()
+                            self.playbackRate = 1.0
+                            self.setState(.playing)
+                            if FeatureFlags.enableAssetReaderRenderer {
+                                self.assetReaderSource?.clearFrozenFrame()
+                                self.assetReaderSource?.restart(atSeconds: targetSeconds)
+                            }
+                            self.updateDerivedState(for: self.player.currentTime())
+                            self.log.info("Full loop -> \(self.inPointFrame ?? 0, privacy: .public)")
+                        }
+                    }
+                } else {
+                    self.pause()
+                }
             }
         }
     }
@@ -504,7 +525,8 @@ public final class PlayerController: ObservableObject {
         playbackRate = 1.0
         if FeatureFlags.enableAssetReaderRenderer {
             assetReaderSource?.clearFrozenFrame()
-            assetReaderSource?.start()
+            let currentSec = max(0, player.currentTime().seconds)
+            assetReaderSource?.restart(atSeconds: currentSec)
         }
         if let clampedStart = clampedFrameIndex(frameIndex),
            fps > 0,
@@ -675,7 +697,9 @@ public final class PlayerController: ObservableObject {
                     let targetFrame = Int(round(seconds * max(self.fps, 1.0)))
                     self.generateFrozenFrame(atFrameIndex: targetFrame)
                 } else if FeatureFlags.enableAssetReaderRenderer {
-                    self.assetReaderSource?.restart(atSeconds: seconds)
+                    // seek 완료 후 실제 AVPlayer 위치 기준으로 restart (tolerance 오차 보정)
+                    let actual = max(0, self.player.currentTime().seconds)
+                    self.assetReaderSource?.restart(atSeconds: actual)
                 }
                 if clearLoopFlag {
                     self.loopSeekInFlight = false

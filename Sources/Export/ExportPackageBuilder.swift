@@ -34,11 +34,13 @@ public struct ExportPackageRequest {
 public struct ExportPackageResult: Equatable {
     public let packageURL: URL
     public let stillURL: URL
+    public let burnInURL: URL?
     public let notesURL: URL
 
-    public init(packageURL: URL, stillURL: URL, notesURL: URL) {
+    public init(packageURL: URL, stillURL: URL, burnInURL: URL?, notesURL: URL) {
         self.packageURL = packageURL
         self.stillURL = stillURL
+        self.burnInURL = burnInURL
         self.notesURL = notesURL
     }
 }
@@ -49,21 +51,37 @@ public enum ExportPackageBuilder {
             at: request.destinationURL,
             name: request.packageName
         )
+        let notesURL = packageURL.appendingPathComponent("notes.json")
+
+        // Clean still — always written, no overlay
         let stillFileName = ExportNaming.stillFileName(
             baseName: request.stillBaseName,
             frameIndex: request.frameIndex
         )
         let stillURL = packageURL.appendingPathComponent(stillFileName)
-        let notesURL = packageURL.appendingPathComponent("notes.json")
+        try ExportImageWriter.writePNG(image: request.baseImage, to: stillURL)
 
-        let finalImage = ExportImageComposer.compose(
-            base: request.baseImage,
-            overlay: request.overlayImage
-        )
-        try ExportImageWriter.writePNG(image: finalImage, to: stillURL)
+        // Burn-in still — written only when overlay is present (HUD and/or annotations)
+        var burnInURL: URL? = nil
+        if let overlay = request.overlayImage {
+            let burnInFileName = ExportNaming.burnInFileName(
+                baseName: request.stillBaseName,
+                frameIndex: request.frameIndex
+            )
+            let url = packageURL.appendingPathComponent(burnInFileName)
+            let composited = ExportImageComposer.compose(base: request.baseImage, overlay: overlay)
+            try ExportImageWriter.writePNG(image: composited, to: url)
+            burnInURL = url
+        }
+
         try NotesWriter.write(notes: request.notes, to: notesURL)
 
-        return ExportPackageResult(packageURL: packageURL, stillURL: stillURL, notesURL: notesURL)
+        return ExportPackageResult(
+            packageURL: packageURL,
+            stillURL: stillURL,
+            burnInURL: burnInURL,
+            notesURL: notesURL
+        )
     }
 }
 
@@ -77,6 +95,11 @@ public enum ExportNaming {
     public static func stillFileName(baseName: String, frameIndex: Int) -> String {
         let sanitized = sanitize(baseName)
         return "\(sanitized)_F\(frameIndex).png"
+    }
+
+    public static func burnInFileName(baseName: String, frameIndex: Int) -> String {
+        let sanitized = sanitize(baseName)
+        return "\(sanitized)_F\(frameIndex)_burnin.png"
     }
 
     private static func timestampString(from date: Date) -> String {

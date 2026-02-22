@@ -42,7 +42,7 @@ public enum DecodedFrame {
     case pixelBuffer(CVPixelBuffer)
 }
 
-public protocol DecoderPlugin {
+public protocol DecoderPlugin: Sendable {
     static var pluginID: String { get }
     static var displayName: String { get }
     static var supportedExtensions: [String] { get }
@@ -54,6 +54,13 @@ public protocol DecoderPlugin {
     func decodeFrame(_ request: FrameRequest) throws -> DecodedFrame
     func prefetch(frames: [Int])
     func close()
+
+    /// fps 힌트를 외부에서 주입할 때 사용. 기본 구현은 no-op.
+    func setFPSHint(_ fps: Double)
+}
+
+public extension DecoderPlugin {
+    func setFPSHint(_ fps: Double) {}
 }
 
 public final class AVFoundationDecoder: DecoderPlugin, @unchecked Sendable {

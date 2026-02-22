@@ -10,6 +10,23 @@ struct MetalVideoContainer: NSViewRepresentable {
     let lutIntensity: Double
     let reviewSession: ReviewSession?
     let isAnnotating: Bool
+    @Binding var zoomCommand: ZoomCommand?
+    let scopeEnabled: Bool
+    let onHistogram: ((HistogramData) -> Void)?
+    let onWaveform: ((WaveformData) -> Void)?
+    let onVectorscope: ((VectorscopeData) -> Void)?
+    let onColorSample: ((PixelColor?) -> Void)?
+    // A/B compare
+    let compareEnabled: Bool
+    let comparePixelBuffer: CVPixelBuffer?
+    let compareSplitX: Float
+    @Binding var captureCompareRequest: Bool
+    let onCompareCapture: ((CVPixelBuffer?) -> Void)?
+    // C: False Color
+    let falseColorEnabled: Bool
+    // Phase 95: transform 콜백 + HDR
+    let onTransformUpdate: ((VideoTransform) -> Void)?
+    let autoToneMap: Bool
 
     func makeNSView(context: Context) -> MetalVideoView {
         let view = MetalVideoView(frame: .zero, frameProvider: { hostTime in
@@ -29,6 +46,13 @@ struct MetalVideoContainer: NSViewRepresentable {
             return OverlayPayload(hud: hud, annotations: annotations)
         })
         view.updateLUT(cube: lutCube, intensity: Float(lutIntensity), enabled: lutEnabled)
+        view.updateVideoSize(player.resolution)
+        view.isInteractionEnabled = !isAnnotating
+        view.compareEnabled = compareEnabled
+        view.comparePixelBuffer = comparePixelBuffer
+        view.compareSplitX = compareSplitX
+        view.falseColorEnabled = falseColorEnabled
+        view.updateHDRMode(player.hdrMode, autoToneMap: autoToneMap)
         return view
     }
 
@@ -51,6 +75,40 @@ struct MetalVideoContainer: NSViewRepresentable {
             return OverlayPayload(hud: hud, annotations: annotations)
         }
         nsView.updateLUT(cube: lutCube, intensity: Float(lutIntensity), enabled: lutEnabled)
+        nsView.updateVideoSize(player.resolution)
+        nsView.isInteractionEnabled = !isAnnotating
+        nsView.onHistogram    = scopeEnabled ? onHistogram    : nil
+        nsView.onWaveform     = scopeEnabled ? onWaveform     : nil
+        nsView.onVectorscope  = scopeEnabled ? onVectorscope  : nil
+        nsView.onColorSample  = isAnnotating ? nil : onColorSample
+        nsView.compareEnabled     = compareEnabled
+        nsView.comparePixelBuffer = comparePixelBuffer
+        nsView.compareSplitX      = compareSplitX
+        nsView.falseColorEnabled  = falseColorEnabled
+        nsView.updateHDRMode(player.hdrMode, autoToneMap: autoToneMap)
+
+        // transform 콜백 → AppState.videoTransform 업데이트 (어노테이션 좌표 보정)
+        nsView.onTransformUpdate = { scale, offset in
+            onTransformUpdate?(VideoTransform(scale: scale, offset: offset))
+        }
+
+        if captureCompareRequest {
+            let captured = nsView.lastPixelBuffer
+            DispatchQueue.main.async {
+                captureCompareRequest = false
+                onCompareCapture?(captured)
+            }
+        }
+        if let cmd = zoomCommand {
+            nsView.applyZoomCommand(cmd)
+            DispatchQueue.main.async { zoomCommand = nil }
+        }
+    }
+
+    private var videoAspect: Float {
+        let res = player.resolution
+        guard res.height > 0 else { return 1.0 }
+        return Float(res.width / res.height)
     }
 
     private func currentOverlayAnnotations() -> [OverlayAnnotation] {

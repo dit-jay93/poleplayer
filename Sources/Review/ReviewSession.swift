@@ -103,6 +103,36 @@ public final class ReviewSession: ObservableObject {
         persist()
     }
 
+    public func updateTitle(_ title: String) {
+        guard let item = reviewItem else { return }
+        reviewItem = ReviewItemRecord(
+            id: item.id,
+            assetId: item.assetId,
+            title: title,
+            tags: item.tags,
+            startFrame: item.startFrame,
+            endFrame: item.endFrame,
+            createdAt: item.createdAt,
+            updatedAt: Date()
+        )
+        persist()
+    }
+
+    public func updateTags(_ tags: [String]) {
+        guard let item = reviewItem else { return }
+        reviewItem = ReviewItemRecord(
+            id: item.id,
+            assetId: item.assetId,
+            title: item.title,
+            tags: tags,
+            startFrame: item.startFrame,
+            endFrame: item.endFrame,
+            createdAt: item.createdAt,
+            updatedAt: Date()
+        )
+        persist()
+    }
+
     public func updateSelectedText(_ text: String) {
         guard let selected = selectedAnnotation else { return }
         guard case .text(let anchor, _) = selected.geometry else { return }

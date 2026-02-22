@@ -6,6 +6,7 @@ struct AnnotationCanvas: View {
     @ObservedObject var reviewSession: ReviewSession
     let player: PlayerController
     let isAnnotating: Bool
+    var videoTransform: VideoTransform = VideoTransform()
 
     @State private var dragStart: CGPoint? = nil
     @State private var penPoints: [CGPoint] = []
@@ -217,24 +218,39 @@ struct AnnotationCanvas: View {
         return (end, start)
     }
 
+    /// SwiftUI 뷰 좌표 → 정규화 영상 UV (0~1)
+    ///
+    /// - MetalVideoContainer padding(4pt) 오프셋 보정
+    /// - zoom/pan transform 역변환 (NDC → image UV)
     private func normalize(point: CGPoint, in size: CGSize) -> NormalizedPoint {
-        NormalizedPoint(
-            x: Double(point.x / max(size.width, 1)),
-            y: Double(point.y / max(size.height, 1))
-        )
+        let pad: CGFloat = 4                          // MetalVideoContainer .padding(4)
+        let vw = max(size.width  - pad * 2, 1)
+        let vh = max(size.height - pad * 2, 1)
+        let px = point.x - pad
+        let py = point.y - pad
+
+        // SwiftUI(top-left, y-down) → Metal NDC(center, y-up)
+        let ndcX =  Float(px / vw) * 2 - 1
+        let ndcY = -(Float(py / vh) * 2 - 1)
+
+        // NDC → image UV — MetalVideoView.computeTransform 역변환
+        let sc  = videoTransform.scale
+        let off = videoTransform.offset
+        let u = (ndcX - off.x) / (2 * sc.x) + 0.5
+        let v = 1.0 - ((ndcY - off.y) / (2 * sc.y) + 0.5)
+
+        return NormalizedPoint(x: Double(max(0, min(1, u))),
+                               y: Double(max(0, min(1, v))))
     }
 
     private func normalizedRect(start: CGPoint, end: CGPoint, size: CGSize) -> NormalizedRect {
-        let minX = min(start.x, end.x)
-        let minY = min(start.y, end.y)
-        let width = abs(end.x - start.x)
-        let height = abs(end.y - start.y)
-        return NormalizedRect(
-            x: Double(minX / max(size.width, 1)),
-            y: Double(minY / max(size.height, 1)),
-            width: Double(width / max(size.width, 1)),
-            height: Double(height / max(size.height, 1))
-        )
+        let ns = normalize(point: start, in: size)
+        let ne = normalize(point: end, in: size)
+        let minX = min(ns.x, ne.x)
+        let minY = min(ns.y, ne.y)
+        return NormalizedRect(x: minX, y: minY,
+                              width: abs(ne.x - ns.x),
+                              height: abs(ne.y - ns.y))
     }
 }
 

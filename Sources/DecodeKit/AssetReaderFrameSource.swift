@@ -39,17 +39,20 @@ public final class AssetReaderFrameSource {
     }
 
     public func stop() {
-        queue.sync {
-            timer?.cancel()
-            timer = nil
-            reader?.cancelReading()
-            reader = nil
-            output = nil
-        }
+        queue.sync { stopOnQueue() }
         lock.lock()
         currentBuffer = nil
         frozenBuffer = nil
         lock.unlock()
+    }
+
+    /// queue 위에서 이미 실행 중일 때 타이머/리더를 정리합니다 (queue.sync 없이).
+    private func stopOnQueue() {
+        timer?.cancel()
+        timer = nil
+        reader?.cancelReading()
+        reader = nil
+        output = nil
     }
 
     public func currentPixelBuffer() -> CVPixelBuffer? {
@@ -83,7 +86,7 @@ public final class AssetReaderFrameSource {
             do {
                 let reader = try AVAssetReader(asset: self.asset)
                 let output = AVAssetReaderTrackOutput(track: self.track, outputSettings: self.outputSettings)
-                output.alwaysCopiesSampleData = false
+                output.alwaysCopiesSampleData = true
 
                 if seconds > 0 {
                     let start = CMTime(seconds: seconds, preferredTimescale: 600)
@@ -119,13 +122,13 @@ public final class AssetReaderFrameSource {
     private func readNextFrame() {
         guard let reader, let output else { return }
         if reader.status != .reading {
-            stop()
+            stopOnQueue()   // 이미 queue 위 — queue.sync 없이 직접 정리
             return
         }
 
         guard let sampleBuffer = output.copyNextSampleBuffer(),
               let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            stop()
+            stopOnQueue()   // 이미 queue 위 — queue.sync 없이 직접 정리
             return
         }
 

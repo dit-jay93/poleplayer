@@ -73,6 +73,11 @@ public struct ExportContext {
 }
 
 public enum ExportCoordinator {
+    /// PDF 리뷰 리포트를 생성합니다.
+    public static func exportPDFReport(context: ExportContext, outputURL: URL) throws {
+        try PDFReportBuilder.build(context: context, outputURL: outputURL)
+    }
+
     public static func exportPackage(context: ExportContext) throws -> ExportPackageResult {
         let notes = buildNotes(context: context)
         let request = ExportPackageRequest(

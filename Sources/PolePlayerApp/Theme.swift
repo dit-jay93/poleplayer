@@ -7,12 +7,17 @@ enum Theme {
         endPoint: .bottomTrailing
     )
 
-    static let viewerBackground = Color.black.opacity(0.92)
-    static let topBarBackground = Color(red: 0.12, green: 0.13, blue: 0.17)
-    static let transportBackground = Color(red: 0.10, green: 0.11, blue: 0.15)
-    static let hudBackground = Color.black.opacity(0.7)
+    static let viewerBackground = Color(red: 0.04, green: 0.04, blue: 0.05)
+    static let topBarBackground = Color(red: 0.11, green: 0.12, blue: 0.16)
+    static let panelBackground  = Color(red: 0.10, green: 0.11, blue: 0.14)
+    static let panelDivider     = Color.white.opacity(0.07)
+    static let transportBackground = Color(red: 0.09, green: 0.10, blue: 0.13)
+    static let hudBackground    = Color.black.opacity(0.65)
     static let modePillBackground = Color(red: 0.15, green: 0.16, blue: 0.2).opacity(0.9)
 
-    static let primaryText = Color.white
-    static let secondaryText = Color.white.opacity(0.7)
+    static let primaryText   = Color.white
+    static let secondaryText = Color.white.opacity(0.55)
+
+    // Inspector section header
+    static let sectionLabel  = Color.white.opacity(0.35)
 }

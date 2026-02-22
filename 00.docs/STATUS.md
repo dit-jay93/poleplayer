@@ -1,8 +1,8 @@
 # STATUS
 
-Updated: 2026-02-22 KST
+Updated: 2026-02-22 KST (Phase 95)
 
-Current phase: 94 — Timeline Thumbnail Strip (complete)
+Current phase: 95 — Playback Stabilization & Bug Fixes (complete)
 
 What's done
 - Swift Package scaffold with modular targets (PlayerCore/DecodeKit/RenderCore/Review/Library/Export)
