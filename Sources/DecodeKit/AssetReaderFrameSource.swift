@@ -16,12 +16,17 @@ public final class AssetReaderFrameSource {
     private var currentBuffer: CVPixelBuffer?
     private var frozenBuffer: CVPixelBuffer?
 
-    public init(asset: AVAsset, track: AVAssetTrack, fps: Double) {
+    public init(asset: AVAsset, track: AVAssetTrack, fps: Double, isHDR: Bool = false) {
         self.asset = asset
         self.track = track
         self.fps = fps > 0 ? fps : 30.0
+        // HDR: 64-bit half-float RGBA (선형 광량, BT.2020 범위 보존) → 8-bit 클리핑 없음
+        // SDR: 32-bit BGRA (기존 경로)
+        let pixelFormat: OSType = isHDR
+            ? kCVPixelFormatType_64RGBAHalf
+            : kCVPixelFormatType_32BGRA
         self.outputSettings = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            kCVPixelBufferPixelFormatTypeKey as String: pixelFormat
         ]
     }
 
@@ -41,7 +46,8 @@ public final class AssetReaderFrameSource {
     public func stop() {
         queue.sync { stopOnQueue() }
         lock.lock()
-        currentBuffer = nil
+        // currentBuffer는 유지 — seek/pause 중 마지막 프레임 홀드 (체커보드 방지)
+        // 새 리더가 첫 프레임을 쓰는 순간 자동으로 교체됨
         frozenBuffer = nil
         lock.unlock()
     }

@@ -224,7 +224,9 @@ public final class PlayerController: ObservableObject {
             }
 
             if FeatureFlags.enableAssetReaderRenderer {
-                assetReaderSource = AssetReaderFrameSource(asset: asset, track: track, fps: fps)
+                assetReaderSource = AssetReaderFrameSource(
+                    asset: asset, track: track, fps: fps,
+                    isHDR: hdrMode != "SDR")
             }
             if FeatureFlags.enablePrecisionImageGenerator {
                 if let urlAsset = asset as? AVURLAsset {

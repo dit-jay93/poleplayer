@@ -146,13 +146,11 @@ final class AppState: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // HDR 영상 감지 시 autoToneMap 자동 활성화
+        // HDR 영상 감지 시 autoToneMap 자동 활성화/비활성화
         playerController.$hdrMode
             .dropFirst()
             .sink { [weak self] mode in
-                if mode != "SDR" {
-                    self?.autoToneMap = true
-                }
+                self?.autoToneMap = (mode != "SDR")
             }
             .store(in: &cancellables)
 

@@ -119,24 +119,21 @@ final class MetalRenderer {
     }
 
     private func makeTexture(from pixelBuffer: CVPixelBuffer) -> MTLTexture? {
-        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let width  = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
-
         guard let cache = textureCache else { return nil }
+
+        // HDR half-float(64RGBAHalf) → rgba16Float, SDR BGRA → bgra8Unorm
+        let cvFmt = CVPixelBufferGetPixelFormatType(pixelBuffer)
+        let mtlFmt: MTLPixelFormat = (cvFmt == kCVPixelFormatType_64RGBAHalf)
+            ? .rgba16Float
+            : .bgra8Unorm
 
         var cvTexture: CVMetalTexture?
         let status = CVMetalTextureCacheCreateTextureFromImage(
-            kCFAllocatorDefault,
-            cache,
-            pixelBuffer,
-            nil,
-            .bgra8Unorm,
-            width,
-            height,
-            0,
-            &cvTexture
+            kCFAllocatorDefault, cache, pixelBuffer, nil,
+            mtlFmt, width, height, 0, &cvTexture
         )
-
         guard status == kCVReturnSuccess, let cvTexture else { return nil }
         return CVMetalTextureGetTexture(cvTexture)
     }
@@ -483,6 +480,27 @@ private extension MetalRenderer {
         float _pad;
     };
 
+    // HLG 역전달함수(OETF^-1): HLG 신호 [0,1] → 씬 선형 광량 [0,1]
+    float3 hlg_to_linear(float3 e) {
+        const float a = 0.17883277;
+        const float b = 0.28466892;
+        const float c = 0.55991073;
+        float3 lo = (e * e) / 3.0;
+        float3 hi = (exp((e - c) / a) + b) / 12.0;
+        return select(hi, lo, e <= 0.5);
+    }
+
+    // PQ 역전달함수(EOTF): PQ 신호 [0,1] → 절대 광량 [0,1] (1.0 = 10000 nit)
+    float3 pq_to_linear(float3 e) {
+        const float m1 = 0.1593017578125;   // 2610/16384
+        const float m2 = 78.84375;          // 2523/4096 * 128
+        const float c1 = 0.8359375;         // 3424/4096
+        const float c2 = 18.8515625;        // 2413/4096 * 32
+        const float c3 = 18.6875;           // 2392/4096 * 32
+        float3 ep = pow(max(e, float3(0.0)), float3(1.0 / m2));
+        return pow(max(ep - c1, float3(0.0)) / max(c2 - c3 * ep, float3(1e-6)), float3(1.0 / m1));
+    }
+
     float3 applyFalseColor(float luma) {
         if (luma < 0.020) return float3(0.12, 0.06, 0.40);  // 딥 퍼플: 블랙 클립
         if (luma < 0.100) return float3(0.15, 0.25, 0.80);  // 블루: 언더
@@ -527,6 +545,39 @@ private extension MetalRenderer {
         }
 
         float3 outputColor = color.rgb;
+
+        // HDR (HLG/PQ): AVFoundation 64RGBAHalf는 여전히 비선형 인코딩 상태로 출력
+        // 올바른 파이프라인: EOTF(선형화) → BT.2020→709 행렬 → sRGB OETF
+        if (params.hdrMode > 0.5) {
+            if (params.hdrMode < 1.5) {
+                // HLG: OETF^-1 → 씬 선형 [0~1]
+                // × 12: diffuse white (0.0833) → 1.0 으로 정규화
+                outputColor = hlg_to_linear(outputColor) * 12.0;
+            } else {
+                // PQ/HDR10: EOTF → 절대 광량 [0, 1=10000nit]
+                // / 203nit(SDR 기준 흰색) → 상대 선형 (SDR white = 1.0)
+                outputColor = pq_to_linear(outputColor) * (10000.0 / 203.0);
+            }
+
+            // BT.2020 선형 → BT.709 선형 (ITU-R BT.2407 Table 2, column-major)
+            float3x3 bt2020_to_bt709 = float3x3(
+                float3( 1.6605, -0.1246, -0.0182),
+                float3(-0.5876,  1.1329, -0.1006),
+                float3(-0.0728, -0.0083,  1.1188)
+            );
+            outputColor = bt2020_to_bt709 * outputColor;
+
+            // Reinhard tone map: HDR 선형 → SDR 선형 (autoToneMap 활성 시)
+            if (params.autoToneMap >= 0.5) {
+                outputColor = outputColor / (1.0 + outputColor);
+            }
+
+            // 선형 BT.709 → sRGB 인코딩 (extendedSRGB 프레임버퍼 기대값)
+            float3 lo = outputColor * 12.92;
+            float3 hi = 1.055 * pow(max(outputColor, float3(0.0)), float3(1.0/2.4)) - 0.055;
+            outputColor = select(hi, lo, outputColor <= 0.0031308);
+        }
+
         if (params.lutEnabled >= 0.5) {
             float3 domainMin = params.domainMin.xyz;
             float3 domainMax = params.domainMax.xyz;
@@ -552,12 +603,6 @@ private extension MetalRenderer {
         if (params.falseColorEnabled >= 0.5) {
             float luma = dot(outputColor, float3(0.2126, 0.7152, 0.0722));
             outputColor = applyFalseColor(luma);
-        }
-
-        // HDR → SDR Reinhard tone-map
-        if (params.autoToneMap >= 0.5) {
-            outputColor = outputColor / (1.0 + outputColor);
-            outputColor = pow(max(outputColor, 0.0), float3(1.0 / 2.2));
         }
 
         float4 output = float4(outputColor, color.a);
