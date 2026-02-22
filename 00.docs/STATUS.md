@@ -1,8 +1,8 @@
 # STATUS
 
-Updated: 2026-02-22 KST (Phase 95 — HDR fix)
+Updated: 2026-02-22 KST (Phase 96 — Timeline & Scope improvements)
 
-Current phase: 95 — Playback Stabilization & Bug Fixes (complete)
+Current phase: 96 — Timeline & Scope Improvements (complete)
 
 What's done
 - Swift Package scaffold with modular targets (PlayerCore/DecodeKit/RenderCore/Review/Library/Export)
@@ -72,6 +72,10 @@ What's done
   · macOS 26 AudioMeterMonitor MTAudioProcessingTap crash 수정 (#available guard)
   · LUT 파서: 알 수 없는 키워드 스킵 처리로 에러 방지
 - Timeline Thumbnail Strip: PlayerController.generateThumbnails() — background Task + AVAssetImageGenerator (160×90, tolerance 0.5s), 20개 점진 업데이트; thumbnailTask 취소 on clear(); TimelineScrubber ThumbnailStrip — GeometryReader HStack + scaledToFill + RoundedRectangle 클립, allowsHitTesting(false)
+- Phase 96 — 타임라인 & 스코프 개선:
+  · 스코프 비동기화: Task.detached(priority: .utility) + SendablePixelBuffer(@unchecked Sendable) 래퍼 → render thread 블로킹 해소; 결과를 MainActor.run + [weak self]로 전달
+  · 재생 속도 HUD: isPlaying && playbackRate != 1.0 조건 시 HUD에 "Speed Nx" / "-1x" 행 표시 (정상 속도에서는 숨김)
+  · I/O 마커 드래그: TimelineScrubber DragGesture 시작 시 hitMarker(10pt 반경) 판정 → 마커 드래그 시 setInPoint(Int)/setOutPoint(Int) 호출; 드래그 중 Ø10pt 원형 핸들 오버레이 표시; PlayerController에 setInPoint/setOutPoint frame 오버로드 추가
 
 QA 수정 (complete)
 - [x] 재생 버그: audioMeter.attach가 replaceCurrentItem 전에 await → 비블로킹 Task로 변경, clear()에 detach 추가
@@ -90,11 +94,11 @@ V2 Features (complete)
 - [x] E: 오디오 미터 — MTAudioProcessingTap + vDSP_measqv, L/R RMS + 피크홀드, AudioMeterView (TransportBar 내)
 - [x] F: 전체화면 모드 — NSWindow.toggleFullScreen, 툴바 버튼
 
-What's next (Phase 96 candidates)
-- 어노테이션 좌표 역변환 (zoom/pan 적용 시 오프셋 어긋남)
-- 1D LUT .cube 파일 지원
-- 스코프 비동기화 (Task.detached로 render thread 블로킹 해소)
-- autoToneMap UI 토글 (HUD 또는 Inspector에 버튼 노출)
+What's next (Phase 97 candidates)
+- 어노테이션 export: PDF 번들 / 프레임별 CSV 내보내기
+- 타임코드 트랙 파싱 (CMTimeCode track → 정확한 SMPTE TC 표시)
+- 오디오 파형 타임라인 오버레이
+- Review 세션 간 비교 (두 리뷰 어노테이션 diff)
 
 Validation
 - Manual GUI playback validation (ProRes / H.264 / H.265 + still images)
@@ -129,3 +133,6 @@ What Jay can test right now
 - Toggle Burn-in, click Export…, choose a folder
   - Package contains: clean still PNG + (if overlay) burnin PNG + notes.json
 - Run bench: `swift run PolePlayerBench --input /path/to/clip.mov --output /path/to/output`
+- I = set In point, O = set Out point → 마커를 타임라인에서 드래그해 위치 조정 가능 (±10pt hit radius)
+- JKL 2x/4x 재생 중 HUD 좌상단에 "Speed 2x" / "Speed 4x" 표시; J 역방향 시 "Speed -1x"; 1x 정상 속도에서는 숨김
+- H = QC 스코프 → 스코프 계산이 백그라운드 Task로 분리되어 4K 재생 중 render thread 블로킹 없음
