@@ -82,6 +82,17 @@ public final class PlayerController: ObservableObject {
     @Published public private(set) var isLooping: Bool = false
     @Published public private(set) var inPointFrame: Int? = nil
     @Published public private(set) var outPointFrame: Int? = nil
+    @Published public var volume: Float = 1.0 {
+        didSet { player.volume = volume }
+    }
+    @Published public var isMuted: Bool = false {
+        didSet { player.isMuted = isMuted }
+    }
+    @Published public private(set) var hdrMode: String = "SDR"
+    @Published public private(set) var thumbnails: [CGImage] = []
+
+    public let audioMeter = AudioMeterMonitor()
+    private var thumbnailTask: Task<Void, Never>?
 
     private let log = Logger(subsystem: "PolePlayer", category: "PlayerCore")
     private var timeObserverToken: Any?
@@ -91,7 +102,9 @@ public final class PlayerController: ObservableObject {
     private var videoOutput: AVPlayerItemVideoOutput?
     private var assetReaderSource: AssetReaderFrameSource?
     private var precisionDecoder: DecoderPlugin?
-    private let imageGenQueue = DispatchQueue(label: "PlayerCore.ImageGenerator")
+    private let imageGenQueue = DispatchQueue(label: "PlayerCore.ImageGenerator",
+                                              qos: .userInitiated)
+    private let frameCache = FrameCache(capacity: 8)
     private var loopSeekInFlight: Bool = false
     private var timecodeStartFrames: Int = 0
 
@@ -109,6 +122,9 @@ public final class PlayerController: ObservableObject {
         }
         if let observer = endObserver {
             NotificationCenter.default.removeObserver(observer)
+        }
+        if let currentItem = player.currentItem {
+            audioMeter.detach(from: currentItem)
         }
         player.replaceCurrentItem(with: nil)
         asset = nil
@@ -144,6 +160,12 @@ public final class PlayerController: ObservableObject {
         outPointFrame = nil
         loopSeekInFlight = false
         timecodeStartFrames = 0
+        hdrMode = "SDR"
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
+        thumbnails = []
+        frameCache.clear()
+        // volume/mute는 세션 간 유지
     }
 
     public func openVideo(url: URL) {
@@ -194,6 +216,12 @@ public final class PlayerController: ObservableObject {
             videoOutput = output
             player.replaceCurrentItem(with: item)
             hasVideo = true
+            generateThumbnails(count: 20)
+            hdrMode = await detectHDRMode(from: track)
+            // 오디오 미터는 재생 시작 후 비동기로 부착 (블로킹하지 않음)
+            Task { [weak self] in
+                await self?.audioMeter.attach(to: item)
+            }
 
             if FeatureFlags.enableAssetReaderRenderer {
                 assetReaderSource = AssetReaderFrameSource(asset: asset, track: track, fps: fps)
@@ -201,14 +229,12 @@ public final class PlayerController: ObservableObject {
             if FeatureFlags.enablePrecisionImageGenerator {
                 if let urlAsset = asset as? AVURLAsset {
                     let descriptor = AssetDescriptor(url: urlAsset.url)
-                    if AVFoundationDecoder.canOpen(descriptor) {
-                        do {
-                            let decoder = try AVFoundationDecoder(asset: descriptor)
-                            decoder.setFPSHint(fps)
-                            precisionDecoder = decoder
-                        } catch {
-                            handleError(error)
-                        }
+                    do {
+                        let decoder = try DecoderRegistry.shared.makeDecoder(for: descriptor)
+                        decoder.setFPSHint(fps)
+                        precisionDecoder = decoder
+                    } catch {
+                        handleError(error)
                     }
                 }
             }
@@ -265,28 +291,54 @@ public final class PlayerController: ObservableObject {
 
     private func generateFrozenFrame(atFrameIndex frameIndex: Int) {
         guard let precisionDecoder else { return }
+        let cache = frameCache  // capture Sendable reference before crossing actor boundary
+
+        // ── Cache hit path ───────────────────────────────────────────
+        if let cached = cache.lookup(frameIndex) {
+            assetReaderSource?.setFrozenFrame(cached)
+            debugLastPrecisionSource = "cache"
+            debugLastPrecisionAt = CACurrentMediaTime()
+            debugVideoFrames += 1
+            debugFrameSize = CGSize(width: CVPixelBufferGetWidth(cached),
+                                    height: CVPixelBufferGetHeight(cached))
+            scheduleFramePrefetch(around: frameIndex)
+            return
+        }
+
+        // ── Cache miss: decode on background ────────────────────────
         imageGenQueue.async { [weak self] in
             guard let self else { return }
             do {
                 let request = FrameRequest(frameIndex: frameIndex, priority: 1, allowApproximate: false)
                 let decoded = try precisionDecoder.decodeFrame(request)
+
+                let buffer: CVPixelBuffer?
+                switch decoded {
+                case .cgImage(let cgImage):
+                    buffer = PlayerController.makePixelBuffer(from: cgImage)
+                case .pixelBuffer(let buf):
+                    buffer = buf
+                }
+
+                // Store in cache before crossing back to main actor
+                if let buffer { cache.insert(buffer, forFrame: frameIndex) }
+
+                let source: String
+                switch decoded {
+                case .cgImage:    source = "imageGen"
+                case .pixelBuffer: source = "decodeBuffer"
+                }
+
                 Task { @MainActor in
-                    switch decoded {
-                    case .cgImage(let cgImage):
-                        let buffer = self.makePixelBuffer(from: cgImage)
-                        self.assetReaderSource?.setFrozenFrame(buffer)
-                        self.debugLastPrecisionSource = "imageGen"
-                        if let buffer {
-                            self.debugVideoFrames += 1
-                            self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
-                        }
-                    case .pixelBuffer(let buffer):
-                        self.assetReaderSource?.setFrozenFrame(buffer)
-                        self.debugLastPrecisionSource = "decodeBuffer"
-                        self.debugVideoFrames += 1
-                        self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer), height: CVPixelBufferGetHeight(buffer))
-                    }
+                    self.assetReaderSource?.setFrozenFrame(buffer)
+                    self.debugLastPrecisionSource = source
                     self.debugLastPrecisionAt = CACurrentMediaTime()
+                    if let buffer {
+                        self.debugVideoFrames += 1
+                        self.debugFrameSize = CGSize(width: CVPixelBufferGetWidth(buffer),
+                                                     height: CVPixelBufferGetHeight(buffer))
+                    }
+                    self.scheduleFramePrefetch(around: frameIndex)
                 }
             } catch {
                 Task { @MainActor in
@@ -295,6 +347,35 @@ public final class PlayerController: ObservableObject {
                 }
                 self.log.error("Precision decode failed: \(error.localizedDescription, privacy: .public)")
             }
+        }
+    }
+
+    /// Dispatches background decoding of frames adjacent to `centerFrame`.
+    /// Frames already in cache are skipped; decoded results go into cache only
+    /// (not displayed — they are ready for the next user step).
+    private func scheduleFramePrefetch(around centerFrame: Int) {
+        guard let decoder = precisionDecoder else { return }
+        let maxF   = durationFrames          // capture on main actor
+        let cache  = frameCache              // Sendable reference
+
+        let targets = (centerFrame - 2 ... centerFrame + 2)
+            .filter { $0 != centerFrame && $0 >= 0 && (maxF == 0 || $0 < maxF) }
+            .filter { cache.lookup($0) == nil }
+        guard !targets.isEmpty else { return }
+
+        imageGenQueue.async {
+            for target in targets {
+                guard cache.lookup(target) == nil else { continue }
+                let req = FrameRequest(frameIndex: target, priority: 0, allowApproximate: false)
+                guard let decoded = try? decoder.decodeFrame(req) else { continue }
+                let buf: CVPixelBuffer?
+                switch decoded {
+                case .cgImage(let img):    buf = PlayerController.makePixelBuffer(from: img)
+                case .pixelBuffer(let b):  buf = b
+                }
+                if let buf { cache.insert(buf, forFrame: target) }
+            }
+            cache.evict(beyond: 4, of: centerFrame)
         }
     }
 
@@ -322,7 +403,7 @@ public final class PlayerController: ObservableObject {
         return image
     }
 
-    private func makePixelBuffer(from image: CGImage) -> CVPixelBuffer? {
+    nonisolated private static func makePixelBuffer(from image: CGImage) -> CVPixelBuffer? {
         let width = image.width
         let height = image.height
 
@@ -511,6 +592,14 @@ public final class PlayerController: ObservableObject {
         seek(toFrameIndex: targetFrame, precision: true)
     }
 
+    /// 스크러버 드래그 중 실시간 시크 — tolerance 허용, frozen frame 생성 없음
+    public func scrubToFrame(_ frame: Int) {
+        guard fps > 0 else { return }
+        let clamped = max(0, min(durationFrames > 0 ? durationFrames - 1 : 0, frame))
+        let seconds = Double(clamped) / fps
+        seek(toSeconds: seconds, precision: false)
+    }
+
     public func setInPoint() {
         inPointFrame = frameIndex
         if let outPoint = outPointFrame, outPoint < frameIndex {
@@ -538,6 +627,11 @@ public final class PlayerController: ObservableObject {
     public func toggleLooping() {
         isLooping.toggle()
         log.info("Looping: \(self.isLooping ? "ON" : "OFF", privacy: .public)")
+    }
+
+    public func toggleMute() {
+        isMuted.toggle()
+        log.info("Mute: \(self.isMuted ? "ON" : "OFF", privacy: .public)")
     }
 
     public func prepareForAnnotation() {
@@ -626,6 +720,41 @@ public final class PlayerController: ObservableObject {
         return result
     }
 
+    private func generateThumbnails(count: Int) {
+        guard let urlAsset = asset as? AVURLAsset, durationFrames > 0, fps > 0 else { return }
+        thumbnailTask?.cancel()
+        thumbnails = []
+
+        let url = urlAsset.url
+        let capturedFPS = fps
+        let capturedDuration = durationFrames
+
+        thumbnailTask = Task.detached(priority: .background) { [weak self] in
+            let gen = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            gen.appliesPreferredTrackTransform = true
+            gen.maximumSize = CGSize(width: 160, height: 90)
+            gen.requestedTimeToleranceBefore = CMTime(seconds: 0.5, preferredTimescale: 600)
+            gen.requestedTimeToleranceAfter  = CMTime(seconds: 0.5, preferredTimescale: 600)
+
+            let step = max(1, capturedDuration / count)
+            var result: [CGImage] = []
+
+            for i in 0..<count {
+                guard !Task.isCancelled else { break }
+                let frameIndex = i * step
+                let time = CMTime(seconds: Double(frameIndex) / capturedFPS,
+                                  preferredTimescale: 600)
+                if let image = try? gen.copyCGImage(at: time, actualTime: nil) {
+                    result.append(image)
+                    let snapshot = result
+                    await MainActor.run { [weak self] in
+                        self?.thumbnails = snapshot
+                    }
+                }
+            }
+        }
+    }
+
     private func handleLoopIfNeeded(previousFrame: Int) {
         guard state == .playing else { return }
         guard let outPoint = outPointFrame else { return }
@@ -645,6 +774,23 @@ public final class PlayerController: ObservableObject {
                 pause()
             }
         }
+    }
+
+    private func detectHDRMode(from track: AVAssetTrack) async -> String {
+        guard let descs = try? await track.load(.formatDescriptions),
+              let format = descs.first else { return "SDR" }
+        guard let tf = CMFormatDescriptionGetExtension(
+            format,
+            extensionKey: kCMFormatDescriptionExtension_TransferFunction
+        ) as? String else { return "SDR" }
+        if tf == (kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG as String) {
+            return "HLG"
+        } else if tf == (kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ as String) {
+            return "HDR10"
+        } else if tf == (kCMFormatDescriptionTransferFunction_Linear as String) {
+            return "Linear"
+        }
+        return "SDR"
     }
 
     private func validateVideoTrack(_ track: AVAssetTrack) async -> Bool {
