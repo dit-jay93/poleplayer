@@ -28,6 +28,11 @@ enum FontRegistrar {
     }
 
     private static func locateFontURL(named font: String) -> URL? {
+        // SPM .process("Resources") 는 Resources/Fonts/*.otf 를 번들 루트에 평탄화
+        if let url = Bundle.module.url(forResource: font, withExtension: "otf") {
+            return url
+        }
+        // 서브디렉터리 보존 경로 (미래 빌드 변경 대비)
         if let url = Bundle.module.url(forResource: font, withExtension: "otf", subdirectory: "Fonts") {
             return url
         }

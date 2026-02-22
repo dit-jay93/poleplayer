@@ -357,7 +357,8 @@ extension MetalVideoView: MTKViewDelegate {
                 let hist: HistogramData?   = hasH ? HistogramComputer.compute(from: sendable.buffer) : nil
                 let wave: WaveformData?    = hasW ? WaveformComputer.compute(from: sendable.buffer)  : nil
                 let vecs: VectorscopeData? = hasV ? VectorscopeComputer.compute(from: sendable.buffer) : nil
-                await MainActor.run { [weak self] in
+                // Task { @MainActor in } 로 현재 렌더 사이클 이후 배달 → SwiftUI fault 방지
+                Task { @MainActor [weak self] in
                     if let d = hist { self?.onHistogram?(d) }
                     if let d = wave { self?.onWaveform?(d) }
                     if let d = vecs { self?.onVectorscope?(d) }

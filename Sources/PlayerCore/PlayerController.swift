@@ -97,6 +97,7 @@ public final class PlayerController: ObservableObject {
     private let log = Logger(subsystem: "PolePlayer", category: "PlayerCore")
     private var timeObserverToken: Any?
     private var endObserver: NSObjectProtocol?
+    private var statusObservation: NSKeyValueObservation?
     private var reverseTimer: Timer?
     private var asset: AVAsset?
     private var videoOutput: AVPlayerItemVideoOutput?
@@ -164,6 +165,8 @@ public final class PlayerController: ObservableObject {
         thumbnailTask?.cancel()
         thumbnailTask = nil
         thumbnails = []
+        statusObservation?.invalidate()
+        statusObservation = nil
         frameCache.clear()
         // volume/mute는 세션 간 유지
     }
@@ -245,6 +248,7 @@ public final class PlayerController: ObservableObject {
 
             attachTimeObserver()
             attachEndObserver(item: item)
+            attachItemFailureObserver(item: item)
 
             updateDerivedState(for: player.currentTime())
         } catch {
@@ -492,6 +496,20 @@ public final class PlayerController: ObservableObject {
                 } else {
                     self.pause()
                 }
+            }
+        }
+    }
+
+    private func attachItemFailureObserver(item: AVPlayerItem) {
+        statusObservation?.invalidate()
+        statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            guard item.status == .failed else { return }
+            let message = item.error?.localizedDescription ?? "Playback failed"
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.lastErrorMessage = message
+                self.pause()
+                self.log.error("AVPlayerItem failed: \(message, privacy: .public)")
             }
         }
     }
@@ -790,7 +808,8 @@ public final class PlayerController: ObservableObject {
                 if let image = try? gen.copyCGImage(at: time, actualTime: nil) {
                     result.append(image)
                     let snapshot = result
-                    await MainActor.run { [weak self] in
+                    // Task { @MainActor in } 로 현재 렌더 사이클 이후 배달 → SwiftUI fault 방지
+                    Task { @MainActor [weak self] in
                         self?.thumbnails = snapshot
                     }
                 }
