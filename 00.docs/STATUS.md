@@ -1,6 +1,6 @@
 # STATUS
 
-Updated: 2026-02-22 KST (Phase 95)
+Updated: 2026-02-22 KST (Phase 95 — HDR fix)
 
 Current phase: 95 — Playback Stabilization & Bug Fixes (complete)
 
@@ -60,6 +60,17 @@ What's done
 - Multi-clip Grid Viewer: GridLayout (1×1/1×2/2×2), GridSlot (@MainActor, 독립 PlayerController), GridViewerSurface (LazyVGrid, 드래그&드롭, 활성 셀 테두리, 파일명 레이블); AppState gridLayout/gridSlots/activeSlotIndex/gridSyncEnabled/activeController; 툴바 그리드 버튼 + Sync 토글; JKL/스페이스 sync-all 지원; TransportBar/TimelineScrubber activeController 연결
 - PDF Report Export: PDFReportBuilder (CoreGraphics CGPDFContext, A4, 상단 플립 좌표계); 헤더(다크/액센트 스트라이프/파일명/TC/FPS/저자/날짜), 스틸 이미지(baseImage+overlayImage 합성), 어노테이션 표(인덱스/TC/타입/텍스트, 교차 행 음영), Notes/Tags 섹션, 푸터(앱버전/날짜/SHA256 해시); 어노테이션 오버플로우 시 2페이지 자동 분할; InspectorPanel "PDF Report…" 버튼; AppState exportPDFReportPanel()
 - HDR / Wide Gamut: MTKView 픽셀 포맷 .rgba16Float; CAMetalLayer wantsExtendedDynamicRangeContent + extendedSRGB 컬러스페이스; MetalRenderer 파이프라인 .rgba16Float; PlayerController hdrMode (HLG/HDR10/Linear/SDR) — CMFormatDescriptionGetExtension 전송 함수 감지; HUD HDR/EDR 행 (SDR가 아닐 때 / headroom > 1.01x)
+- Phase 95 재생 안정화 버그 수정:
+  · 체커보드 제거: MetalVideoView last-frame hold (nil이면 lastPixelBuffer 유지); AssetReaderFrameSource stop() 시 currentBuffer 보존
+  · A/V 싱크 수정: play() 및 seek 완료 시 restart(atSeconds: currentTime) 사용 (항상 0초 리셋 버그 수정)
+  · SwiftUI 무한 루프 수정: videoTransform @Published → 커스텀 setter(equality guard); updateVideoSize() 동일 크기 조기 리턴
+  · Stop 버튼: TransportBar에 onStop 콜백 추가
+  · Loop 버튼: TransportBar에 repeat SF Symbol 버튼 추가, isLooping 토글
+  · 전체 파일 루프: attachEndObserver — isLooping && outPoint==nil 시 seek(0) + play()
+  · HDR 색상 파이프라인 전면 수정: AVFoundation 64RGBAHalf는 비선형(HLG/PQ 신호) 출력 → 셰이더에 HLG EOTF(OETF^-1 ×12) + PQ EOTF(÷203nit) 추가, BT.2020→BT.709 행렬 후 sRGB OETF 적용; makeTexture 픽셀 포맷 자동 분기(rgba16Float / bgra8Unorm)
+  · HDR→SDR 전환 시 autoToneMap 자동 리셋 수정
+  · macOS 26 AudioMeterMonitor MTAudioProcessingTap crash 수정 (#available guard)
+  · LUT 파서: 알 수 없는 키워드 스킵 처리로 에러 방지
 - Timeline Thumbnail Strip: PlayerController.generateThumbnails() — background Task + AVAssetImageGenerator (160×90, tolerance 0.5s), 20개 점진 업데이트; thumbnailTask 취소 on clear(); TimelineScrubber ThumbnailStrip — GeometryReader HStack + scaledToFill + RoundedRectangle 클립, allowsHitTesting(false)
 
 QA 수정 (complete)
@@ -79,7 +90,13 @@ V2 Features (complete)
 - [x] E: 오디오 미터 — MTAudioProcessingTap + vDSP_measqv, L/R RMS + 피크홀드, AudioMeterView (TransportBar 내)
 - [x] F: 전체화면 모드 — NSWindow.toggleFullScreen, 툴바 버튼
 
-What's next (validation)
+What's next (Phase 96 candidates)
+- 어노테이션 좌표 역변환 (zoom/pan 적용 시 오프셋 어긋남)
+- 1D LUT .cube 파일 지원
+- 스코프 비동기화 (Task.detached로 render thread 블로킹 해소)
+- autoToneMap UI 토글 (HUD 또는 Inspector에 버튼 노출)
+
+Validation
 - Manual GUI playback validation (ProRes / H.264 / H.265 + still images)
 - Precision frame accuracy spot-check on ProRes (random frames, target ±0 frames)
 - Confirm relaunch restore flow with a reference clip (annotations + notes + tags)
