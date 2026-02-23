@@ -159,8 +159,12 @@ final class AppState: ObservableObject {
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             if event.modifierFlags.contains(.command) { return event }
-            if let responder = NSApp.keyWindow?.firstResponder,
-               responder.isKind(of: NSText.self) { return event }
+            // NSText.self 체크는 너무 광범위 — SwiftUI 내부 포커스 뷰(숨겨진 NSTextView 서브클래스)까지
+            // 잡아서 모든 단축키를 차단함. NSTextField를 직접 체크하거나 field editor 여부로 판단한다.
+            if let responder = NSApp.keyWindow?.firstResponder {
+                if responder.isKind(of: NSTextField.self) { return event }
+                if let tv = responder as? NSTextView, tv.isFieldEditor { return event }
+            }
             MainActor.assumeIsolated { self.handleKeyDown(event: event) }
             return nil
         }
